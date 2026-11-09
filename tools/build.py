@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generates the static Babyglee site into the repo root (run: python3 tools/build.py)."""
-import json, pathlib
+import json, pathlib, re
 
 OUT = pathlib.Path(__file__).resolve().parent.parent
 BASE = "https://dmxasif-commits.github.io/babyglee/"  # change if you move to a custom domain
@@ -10,14 +10,18 @@ WA = "8801974974973"
 PHONE_DISPLAY = "+880 1974-974973"
 
 PRODUCTS = [
-    dict(slug="bounce-sky-blue", img="sky-blue-yellow", name="Sky Blue & Yellow", short="Sky Blue", color="#3fb4e8"),
-    dict(slug="bounce-blue-beige", img="blue-beige", name="Blue & Beige", short="Blue & Beige", color="#3d7fa5"),
-    dict(slug="bounce-grey", img="grey", name="Grey", short="Grey", color="#8a9096"),
-    dict(slug="bounce-navy-brown", img="navy-brown", name="Navy & Brown", short="Navy & Brown", color="#26335a"),
-    dict(slug="bounce-black", img="black", name="Black", short="Black", color="#262626"),
+    dict(key="sky-blue", slug="bounce-sky-blue", img="sky-blue-yellow", name="Sky Blue & Yellow", short="Sky Blue", color="#3fb4e8"),
+    dict(key="blue-beige", slug="bounce-blue-beige", img="blue-beige", name="Blue & Beige", short="Blue & Beige", color="#3d7fa5"),
+    dict(key="grey", slug="bounce-grey", img="grey", name="Grey", short="Grey", color="#8a9096"),
+    dict(key="navy-brown", slug="bounce-navy-brown", img="navy-brown", name="Navy & Brown", short="Navy & Brown", color="#26335a"),
+    dict(key="black", slug="bounce-black", img="black", name="Black", short="Black", color="#262626"),
 ]
 
+def store_url(p): return f"product-{p['key']}.html"
+def lp_url(p): return f"lp/{p['key']}.html"
+
 ICONS = {
+ "bag": '<path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 016 0"/>',
  "truck": '<path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
  "cash": '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/>',
  "exchange": '<path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/>',
@@ -103,7 +107,7 @@ def header(active):
     <a class="btn sm nav-cta" href="shop.html">Shop now</a>
   </nav>
   <div class="ship" id="ship">
-    <button class="ship-btn" id="shipBtn" aria-expanded="false" aria-controls="shipMenu"><span class="cc-code">BD</span><span class="ship-t"><small>Shipping to</small>Bangladesh · ৳ BDT</span><svg class="ic chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+    <button class="ship-btn" id="shipBtn" aria-expanded="false" aria-controls="shipMenu"><span class="cc-code">BD</span><span class="ship-t"><small>Shipping to</small>Bangladesh<span class="cur"> · ৳ BDT</span></span><svg class="ic chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
     <div class="ship-menu" id="shipMenu" hidden>
       <p class="sm-h">Shipping destination</p>
       <div class="sm-opt on"><span class="cc-code">BD</span><b>Bangladesh</b>{ic("check")}</div>
@@ -111,6 +115,7 @@ def header(active):
       <ul class="sm-l"><li>{ic("truck")} Home delivery</li><li>{ic("cash")} Cash on Delivery</li><li>{ic("exchange")} 72-hour exchange</li></ul>
     </div>
   </div>
+  <button class="cart-btn" id="cartBtn" aria-label="Open cart">{ic("bag")}<i id="cartCount">0</i></button>
   <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false">{ic("menu")}</button>
 </div></header>
 <main>
@@ -126,7 +131,7 @@ def footer():
       <div class="soc"><a href="https://facebook.com/Babyglee.Official" target="_blank" rel="noopener" aria-label="Babyglee on Facebook">{ic("facebook")}</a>
       <a href="https://wa.me/{WA}" target="_blank" rel="noopener" aria-label="WhatsApp">{ic("whatsapp")}</a></div>
     </div>
-    <div><h4>Shop</h4>{"".join(f'<a href="{p["slug"]}.html">Bounce — {p["short"]}</a>' for p in PRODUCTS)}</div>
+    <div><h4>Shop</h4>{"".join(f'<a href="{store_url(p)}">Bounce — {p["short"]}</a>' for p in PRODUCTS)}</div>
     <div><h4>Company</h4><a href="about.html">About us</a><a href="contact.html">Contact us</a><a href="shipping-returns.html">Shipping &amp; returns</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms &amp; conditions</a></div>
     <div><h4>Get in touch</h4>
       <a href="https://wa.me/{WA}">{ic("whatsapp")} {PHONE_DISPLAY}</a>
@@ -137,7 +142,17 @@ def footer():
   </div>
   <div class="wrap ftr-bottom"><span>© 2025 Babyglee® — A concern of AMC Knit Composite Ltd.</span><span>Trademark Reg. No. 210926 (Class 25) · Trade licence TRAD/DNCC/090476/2022</span></div>
 </footer>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Shopping cart" aria-hidden="true">
+  <header><h3>Your cart</h3><button class="icon-btn" id="closeCart" aria-label="Close cart">{ic("close")}</button></header>
+  <div class="d-body" id="drawerLines"></div>
+  <footer><div class="tot"><span>Subtotal</span><b id="drawerSub"></b></div>
+    <a class="btn block" id="drawerCheckout" href="checkout.html">Checkout</a><a class="btn ghost block" href="cart.html">View cart</a>
+    <small>Delivery is calculated at checkout · Cash on Delivery</small></footer>
+</aside>
+<div class="toast" id="toast" role="status"></div>
 <script src="assets/config.js"></script>
+<script src="assets/products.js"></script>
 <script src="assets/main.js"></script>
 </body>
 </html>
@@ -155,7 +170,7 @@ def trust_strip():
         f'<div class="tr">{ic(i)}<div><b>{t}</b><span>{s}</span></div></div>' for i, t, s in TRUST) + "</div></section>"
 
 def card(p):
-    return f'''<a class="pcard" href="{p["slug"]}.html">
+    return f'''<a class="pcard" href="{store_url(p)}">
   <div class="pic"><img src="img/{p["img"]}.webp" alt="Babyglee Bounce sneaker — {p["name"]}" loading="lazy"></div>
   <div class="pbody"><span class="sw" style="background:{p["color"]}"></span><h3>Bounce — {p["name"]}</h3>
   <p class="pmeta">Kids' casual sneaker · EU 21–36</p>
@@ -273,17 +288,52 @@ def page_shop():
     h += footer()
     write("shop.html", h)
 
-def page_product(p):
-    url = BASE + p["slug"] + ".html"
-    ld = {"@context": "https://schema.org", "@type": "Product", "name": f"Babyglee Bounce — {p['name']}", "image": BASE + f"img/{p['img']}.webp",
-          "brand": {"@type": "Brand", "name": "Babyglee"}, "description": "Kids' casual sneaker with breathable mesh upper, velcro strap and anti-slip shock-absorbing sole.",
-          "offers": {"@type": "Offer", "eligibleRegion": "BD", "url": url, "priceCurrency": "BDT", "price": str(PRICE), "availability": "https://schema.org/InStock"}}
-    extra = f'<script type="application/ld+json">{json.dumps(ld)}</script>'
+def rebase(html, prefix):
+    """Prefix relative asset/page URLs so a page in a sub-folder (lp/) still finds them."""
+    return re.sub(r'(href|src)="(?!https?:|mailto:|tel:|#|data:|\.\./)([^"]+)"', lambda m: f'{m.group(1)}="{prefix}{m.group(2)}"', html)
+
+def done_block(shop=True):
+    more = '<a class="btn ghost" href="shop.html">Continue shopping</a>' if shop else ''
+    return f'''<div class="done" id="done" hidden>
+    <span class="okc">{ic("check")}</span><h3>Thank you! Your order is placed.</h3>
+    <p>Order ID <b id="oid"></b></p>
+    <dl class="recap"><div><dt>Items</dt><dd id="rItems"></dd></div><div><dt>Deliver to</dt><dd id="rA"></dd></div><div class="tot"><dt>Pay on delivery</dt><dd id="rT"></dd></div></dl>
+    <p>Our team will call you on <b id="rPh"></b> to confirm your size and delivery. Please keep your phone nearby.</p>
+    <p class="demo" id="demoNote" hidden>Demo mode: ordering is not connected yet, so this order was not sent to the Babyglee team.</p>
+    <p class="fine">Need help? <a href="https://wa.me/{WA}" target="_blank" rel="noopener">Chat on WhatsApp</a> or call {PHONE_DISPLAY}</p>
+    {more}
+  </div>'''
+
+def lp_header():
+    return f'''<div class="topbar"><div class="wrap"><span>{ic("pin")} Shipping to Bangladesh</span><span>Designed for European markets</span><span>{ic("cash")} Cash on Delivery</span><span>{ic("exchange")} 72-hour exchange</span></div></div>
+<header class="hdr lp"><div class="wrap hdr-in">
+  <span class="brand"><img src="img/logo.webp" alt="Babyglee — Because we love them!" width="117" height="87"></span>
+  <span class="ship-static"><span class="cc-code">BD</span><span class="ship-t"><small>Shipping to</small>Bangladesh<span class="cur"> · ৳ BDT</span></span></span>
+  <a class="btn sm" href="#order">Order now</a>
+</div></header>
+<main>
+'''
+
+def lp_footer():
+    return f'''</main>
+<footer class="ftr lp-ftr"><div class="wrap">
+  <img src="img/logo.webp" alt="Babyglee" width="117" height="87">
+  <p>Babyglee® — international kids' sneakers, shipping to Bangladesh.</p>
+  <nav><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a><a href="terms.html" target="_blank" rel="noopener">Terms &amp; conditions</a><a href="shipping-returns.html" target="_blank" rel="noopener">Shipping &amp; returns</a><a href="contact.html" target="_blank" rel="noopener">Contact us</a></nav>
+  <p class="copy">© 2025 Babyglee® — A concern of AMC Knit Composite Ltd. · {PHONE_DISPLAY} · info@babygleebd.com</p>
+</div></footer>
+<script src="assets/config.js"></script>
+<script src="assets/main.js"></script>
+</body>
+</html>
+'''
+
+def page_landing(p):
+    extra = '<meta name="robots" content="noindex, nofollow">'
     h = head(f"Babyglee Bounce — {p['name']} | Kids' Sneakers {fmt(PRICE)}", f"Babyglee Bounce kids' sneakers in {p['name']}. EU 21–36, memory-foam insole, anti-slip sole. {fmt(PRICE)} with Cash on Delivery.", "product", img=f"img/{p['img']}.webp", extra=extra)
-    h += header("shop").replace('<a class="btn sm nav-cta" href="shop.html">Shop now</a>', '<a class="btn sm nav-cta" href="#order">Order now</a>')
+    h += lp_header()
     sizes = "".join(f'<label class="szc"><input type="radio" name="size" value="{n}" required><span>{n}</span></label>' for n in range(21, 37))
-    h += f'''<div class="wrap crumbs"><a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <span>Bounce — {p["name"]}</span></div>
-<section class="pdp" data-slug="{p["slug"]}" data-name="Babyglee Bounce — {p["name"]}" data-img="img/{p["img"]}.webp">
+    h += f'''<section class="pdp" data-slug="{p["slug"]}" data-name="Babyglee Bounce — {p["name"]}" data-img="img/{p["img"]}.webp">
   <div class="wrap pdp-in">
     <div class="pdp-stage tilt-stage" id="stage"><div class="disc"></div><img class="shoe" data-depth="50" src="img/{p["img"]}.webp" alt="Babyglee Bounce sneakers — {p["name"]}" fetchpriority="high"><span class="badge">Save {round((LIST-PRICE)/LIST*100)}%</span></div>
     <div class="pdp-info">
@@ -329,16 +379,54 @@ def page_product(p):
       <p class="fine">Prefer to talk first? <a href="https://wa.me/{WA}" target="_blank" rel="noopener">Chat on WhatsApp</a></p>
     </aside>
   </div>
-  <div class="done" id="done" hidden>
-    <span class="okc">{ic("check")}</span><h3>Thank you! Your order is placed.</h3>
-    <p>Order ID <b id="oid"></b></p>
-    <dl class="recap"><div><dt>Product</dt><dd id="rP"></dd></div><div><dt>Size</dt><dd id="rS"></dd></div><div><dt>Deliver to</dt><dd id="rA"></dd></div><div class="tot"><dt>Pay on delivery</dt><dd id="rT"></dd></div></dl>
-    <p>Our team will call you on <b id="rPh"></b> to confirm your size and delivery. Please keep your phone nearby.</p>
-    <p class="demo" id="demoNote" hidden>Demo mode: ordering is not connected yet, so this order was not sent to the Babyglee team.</p>
-    <p class="fine">Need help? <a href="https://wa.me/{WA}" target="_blank" rel="noopener">Chat on WhatsApp</a> or call {PHONE_DISPLAY}</p>
-    <a class="btn ghost" href="shop.html">Continue shopping</a>
-  </div>
+  {done_block(shop=False)}
 </div></section>
+<section class="sec alt"><div class="wrap">
+  <div class="sec-head"><span class="eyebrow">Built for little feet</span><h2>Why parents love the Bounce</h2></div>{feature_cards()}</div></section>
+<section class="sec" id="sizes"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">Size guide</span><h2>Choose the right size</h2></div>{size_table()}</div></section>
+<section class="sec"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">FAQ</span><h2>Quick answers</h2></div>{faq_block()}</div></section>
+<div class="sticky-cta" id="stickyCta"><div><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></div><a class="btn" href="#order">Order now</a></div>
+'''
+    h += lp_footer()
+    write(lp_url(p), rebase(h, "../"))
+
+def page_pdp(p):
+    """Regular e-commerce product page: choose size, add to cart."""
+    url = BASE + store_url(p)
+    ld = {"@context": "https://schema.org", "@type": "Product", "name": f"Babyglee Bounce — {p['name']}", "image": BASE + f"img/{p['img']}.webp",
+          "brand": {"@type": "Brand", "name": "Babyglee"}, "description": "Kids' casual sneaker with breathable mesh upper, velcro strap and anti-slip shock-absorbing sole.",
+          "offers": {"@type": "Offer", "eligibleRegion": "BD", "url": url, "priceCurrency": "BDT", "price": str(PRICE), "availability": "https://schema.org/InStock"}}
+    extra = f'<script type="application/ld+json">{json.dumps(ld)}</script>'
+    h = head(f"Babyglee Bounce — {p['name']} | Kids' Sneakers {fmt(PRICE)}", f"Babyglee Bounce kids' sneakers in {p['name']}. EU 21–36, memory-foam insole, anti-slip sole. {fmt(PRICE)} with Cash on Delivery.", "pdp", img=f"img/{p['img']}.webp", extra=extra)
+    h += header("shop")
+    sizes = "".join(f'<label class="szc"><input type="radio" name="size" value="{n}"><span>{n}</span></label>' for n in range(21, 37))
+    h += f'''<div class="wrap crumbs"><a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <span>Bounce — {p["name"]}</span></div>
+<section class="pdp" id="pdp" data-slug="{p["slug"]}">
+  <div class="wrap pdp-in">
+    <div class="pdp-stage tilt-stage" id="stage"><div class="disc"></div><img class="shoe" data-depth="50" src="img/{p["img"]}.webp" alt="Babyglee Bounce sneakers — {p["name"]}" fetchpriority="high"><span class="badge">Save {round((LIST-PRICE)/LIST*100)}%</span></div>
+    <div class="pdp-info">
+      <span class="pill">Babyglee® Bounce · BSTD-01</span>
+      <h1>Bounce — {p["name"]}</h1>
+      <p class="pmeta">Kids' casual sneaker · EU 21–36 · Ages 1–10</p>
+      <p class="pl">Price for Bangladesh (BDT)</p>
+      <div class="price-tag lg"><s>{fmt(LIST)}</s><b>{fmt(PRICE)}</b><span>You save {fmt(LIST-PRICE)}</span></div>
+      <p class="usd-note">International price: <b>US${PRICE_USD}</b> <span>USD price is shown for reference. You pay in BDT on delivery.</span></p>
+      <fieldset class="fld pdp-sizes"><legend>Select size (EU) <a href="#sizes" class="lnk">Size guide</a></legend>
+        <div class="szs" id="pdpSizes">{sizes}</div><small class="err" id="sizeErr"></small></fieldset>
+      <div class="buy-row"><div class="qty"><button type="button" id="qm" aria-label="Decrease quantity">−</button><output id="qv">1</output><button type="button" id="qp" aria-label="Increase quantity">+</button></div>
+        <button class="btn lg" type="button" id="addBtn">{ic("bag")} Add to cart</button></div>
+      <button class="btn ghost lg block" type="button" id="buyNow">Buy now</button>
+      <ul class="bul">
+        <li>{ic("check")} Breathable mesh &amp; microfiber synthetic leather upper</li>
+        <li>{ic("check")} Velcro strap with stretch bands, so kids can put them on alone</li>
+        <li>{ic("check")} Anti-slip rubber sole with shock absorption</li>
+        <li>{ic("check")} Memory-foam insole &amp; wide toe box for growing feet</li>
+      </ul>
+      <div class="mini-trust"><span>{ic("cash")} Cash on Delivery</span><span>{ic("exchange")} 72-hr exchange</span><span>{ic("truck")} Home delivery</span></div>
+    </div>
+  </div>
+</section>
+{trust_strip()}
 <section class="sec alt"><div class="wrap">
   <div class="sec-head"><span class="eyebrow">Built for little feet</span><h2>Why parents love the Bounce</h2></div>{feature_cards()}</div></section>
 <section class="sec" id="sizes"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">Size guide</span><h2>Choose the right size</h2></div>{size_table()}</div></section>
@@ -346,10 +434,67 @@ def page_product(p):
   <div class="sec-head"><span class="eyebrow">More colours</span><h2>You may also like</h2></div>
   <div class="grid">{"".join(card(q) for q in PRODUCTS if q is not p)}</div></div></section>
 <section class="sec"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">FAQ</span><h2>Quick answers</h2></div>{faq_block()}</div></section>
-<div class="sticky-cta" id="stickyCta"><div><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></div><a class="btn" href="#order">Order now</a></div>
 '''
     h += footer()
-    write(p["slug"] + ".html", h)
+    write(store_url(p), h)
+
+def page_cart():
+    h = head("Your cart — Babyglee", "Review the items in your Babyglee cart.", "cart", extra='<meta name="robots" content="noindex">')
+    h += header("shop")
+    h += f'''<section class="page-hero"><div class="wrap"><span class="eyebrow">Cart</span><h1>Your cart</h1></div></section>
+<section class="sec"><div class="wrap narrow-lg">
+  <div class="co-grid" id="cartGrid">
+    <div class="cart-box"><div id="cartLines"></div><p class="center"><a class="lnk-b" href="shop.html">← Continue shopping</a></p></div>
+    <aside class="summary" aria-label="Cart summary">
+      <h3 class="sum-t">Order summary</h3>
+      <dl><div><dt>Items</dt><dd id="cCount">0</dd></div><div><dt>Subtotal</dt><dd id="cSub"></dd></div><div><dt>Delivery</dt><dd>At checkout</dd></div></dl>
+      <a class="btn lg block" href="checkout.html">Proceed to checkout</a>
+      <p class="fine center">{ic("shield")} Cash on Delivery · 72-hour exchange</p>
+    </aside>
+  </div>
+  <div class="empty-state" id="cartEmpty" hidden><span class="okc">{ic("bag")}</span><h3>Your cart is empty</h3><p>Pick a pair of Babyglee Bounce sneakers to get started.</p><a class="btn" href="shop.html">Shop now</a></div>
+</div></section>
+'''
+    h += footer()
+    write("cart.html", h)
+
+def page_checkout():
+    h = head("Checkout — Babyglee", "Checkout: delivering to Bangladesh, Cash on Delivery.", "checkout", extra='<meta name="robots" content="noindex">')
+    h += header("shop")
+    h += f'''<section class="page-hero"><div class="wrap"><span class="eyebrow">Checkout</span><h1>Checkout</h1><p>Delivering to Bangladesh · Pay in BDT on delivery</p></div></section>
+<section class="sec"><div class="wrap narrow-lg">
+  <div class="empty-state" id="coEmpty" hidden><span class="okc">{ic("bag")}</span><h3>Your cart is empty</h3><p>Add a pair of sneakers before checking out.</p><a class="btn" href="shop.html">Shop now</a></div>
+  <div class="co-grid" id="coGrid">
+    <form id="coForm" class="co-form" novalidate>
+      <h3 class="sum-t">Delivery details</h3>
+      <div class="fld"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" required><small class="err"></small></div>
+      <div class="fld"><label for="f-phone">Mobile number</label><input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX" required><small class="err"></small></div>
+      <div class="fld"><label for="f-country">Country</label><div class="country"><span class="cc-code">BD</span><input id="f-country" name="country" value="Bangladesh" readonly aria-readonly="true"></div><small class="fine">We currently deliver to Bangladesh.</small></div>
+      <div class="fld"><label for="f-addr">Full address</label><textarea id="f-addr" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area, thana, district" required></textarea><small class="err"></small></div>
+      <fieldset class="fld"><legend>Delivery area</legend>
+        <div class="opts"><label class="opt"><input type="radio" name="area" value="dhaka" checked><span><b>Inside Dhaka</b><em id="chD"></em></span></label>
+        <label class="opt"><input type="radio" name="area" value="outside"><span><b>Outside Dhaka</b><em id="chO"></em></span></label></div></fieldset>
+      <fieldset class="fld"><legend>Payment</legend><div class="opt on-static"><span><b>Cash on Delivery</b><em>Pay in BDT when your parcel arrives</em></span></div></fieldset>
+      <p class="err-box" id="sendErr" role="alert" hidden>Sorry, we couldn't place your order. Please check your connection and try again, or call us on {PHONE_DISPLAY}.</p>
+      <button class="btn lg block" type="submit" id="submitBtn">Place order</button>
+      <p class="fine center">{ic("shield")} Your details are used only to deliver your order.</p>
+    </form>
+    <aside class="summary" aria-label="Order summary">
+      <h3 class="sum-t">Order summary</h3>
+      <div id="coLines"></div>
+      <dl><div><dt>Subtotal</dt><dd id="sSub"></dd></div><div><dt>Delivery</dt><dd id="sDel"></dd></div><div class="tot"><dt>Total (COD)</dt><dd id="sTot"></dd></div></dl>
+      <p class="fine"><a class="lnk-b" href="cart.html">Edit cart</a> · <a class="lnk-b" href="https://wa.me/{WA}" target="_blank" rel="noopener">Chat on WhatsApp</a></p>
+    </aside>
+  </div>
+  {done_block(shop=True)}
+</div></section>
+'''
+    h += footer()
+    write("checkout.html", h)
+
+def write_products_js():
+    data = {p["slug"]: {"title": f"Babyglee Bounce — {p['name']}", "name": p["name"], "img": f"img/{p['img']}.webp", "url": store_url(p)} for p in PRODUCTS}
+    (OUT / "assets" / "products.js").write_text("/* generated by tools/build.py */\nwindow.BG_PRODUCTS = " + json.dumps(data, ensure_ascii=False, indent=1) + ";\n", encoding="utf-8")
 
 def simple_page(fname, title, desc, key, eyebrow, h1, body):
     h = head(f"{title} — Babyglee", desc, key) + header(key)
@@ -417,8 +562,11 @@ def page_terms():
     simple_page("terms.html", "Terms & Conditions", "Terms and conditions for using the Babyglee website and placing orders.", "terms", "Policy", "Terms &amp; conditions", body)
 
 if __name__ == "__main__":
-    OUT.mkdir(exist_ok=True)
-    page_home(); page_shop(); page_about(); page_contact(); page_shipping(); page_privacy(); page_terms()
+    OUT.mkdir(exist_ok=True); (OUT / "lp").mkdir(exist_ok=True)
+    for old in list(OUT.glob("bounce-*.html")) + list((OUT / "lp").glob("*.html")):
+        old.unlink()  # remove stale pages from earlier layouts
+    page_home(); page_shop(); page_about(); page_contact(); page_shipping(); page_privacy(); page_terms(); page_cart(); page_checkout()
     for p in PRODUCTS:
-        page_product(p)
-    print("built", len(list(OUT.glob("*.html"))), "pages")
+        page_pdp(p); page_landing(p)
+    write_products_js()
+    print("built", len(list(OUT.glob("*.html"))), "store pages +", len(list((OUT / "lp").glob("*.html"))), "landing pages")
