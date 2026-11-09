@@ -362,10 +362,10 @@ def page_about():
 <h2>What goes into every pair</h2>
 <ul class="checks plain"><li>{ic("check")} Multi-density sole for joint protection</li><li>{ic("check")} Memory-foam insole for all-day comfort</li><li>{ic("check")} Wide toe box designed with foot development in mind</li><li>{ic("check")} Fast-lock velcro strap so children can put shoes on alone</li><li>{ic("check")} Anti-slip rubber tread for playgrounds, courts and skate parks</li></ul>
 <h2>Quality &amp; safety</h2><p>We follow chemical limits for REACH, phthalates and azo dyes, and test for flex resistance, outsole abrasion and strap tensile strength. Every batch is inspected before packing, and batch testing is available on request.</p>
-<h2>Design &amp; production</h2><p>Designed with our design partner Bengalstitch and produced in Bangladesh. Babyglee is a registered trademark in Bangladesh (Reg. No. 210926, Class 25) and operates under trade licence TRAD/DNCC/090476/2022. Babyglee is a concern of AMC Knit Composite Ltd.</p>
-<h2>Where to find us</h2><p>EU office: Viale R. Piaggio 5/a, 56025 Pontedera, Italy. Dhaka office: Pallabi, Mirpur 12. Factory: Chittagong, Bangladesh. Need help choosing a size? <a href="contact.html">Talk to our team</a>.</p>
+<h2>Design &amp; trademark</h2><p>Every Babyglee design is developed in-house, from concept research and market positioning to value engineering. Babyglee is a registered trademark in Bangladesh (Reg. No. 210926, Class 25) and operates under trade licence TRAD/DNCC/090476/2022. Babyglee is a concern of AMC Knit Composite Ltd.</p>
+<h2>Where to find us</h2><p>EU office: Viale R. Piaggio 5/a, 56025 Pontedera, Italy. Dhaka office: Pallabi, Mirpur 12. Need help choosing a size? <a href="contact.html">Talk to our team</a>.</p>
 <p><a class="btn" href="shop.html">Shop the Bounce series</a></p>'''
-    simple_page("about.html", "About Us", "Babyglee makes comfortable, safe and affordable kids' sneakers designed and made in Bangladesh since 2016.", "about", "About us", "Because we love them", body)
+    simple_page("about.html", "About Us", "Babyglee makes comfortable, safe and affordable kids' sneakers an international brand since 2016.", "about", "About us", "Because we love them", body)
 
 def page_contact():
     cards = f'''<div class="contact-grid">
