@@ -17,6 +17,14 @@ if (burger) {
   document.addEventListener('keydown', e => e.key === 'Escape' && set(false));
 }
 
+/* ---------- copy-link buttons (lp/index.html) ---------- */
+$$('[data-copy]').forEach(b => b.addEventListener('click', async () => {
+  const url = b.dataset.copy;
+  try { await navigator.clipboard.writeText(url); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (x) {} document.body.removeChild(ta); }
+  const old = b.textContent; b.textContent = 'Copied!'; toast('Link copied'); setTimeout(() => b.textContent = old, 1500);
+}));
+
 /* ---------- ship-to selector ---------- */
 const shipBtn = $('#shipBtn'), shipMenu = $('#shipMenu');
 if (shipBtn) {
