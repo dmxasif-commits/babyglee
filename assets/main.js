@@ -75,7 +75,7 @@ if (pdp && form) {
     $('#qv').textContent = qty; $('#sQty').textContent = qty;
     $('#sSub').textContent = fmt(t.sub); $('#sDel').textContent = fmt(t.del); $('#sTot').textContent = fmt(t.tot);
     $('#sSize').textContent = size() ? 'Size: EU ' + size() : 'Size: select';
-    $('#submitBtn').textContent = 'Confirm order · অর্ডার কনফার্ম করুন — ' + fmt(t.tot);
+    $('#submitBtn').textContent = 'Confirm order — ' + fmt(t.tot);
   };
   const begin = () => { if (!started) { started = true; track('InitiateCheckout', content); } };
   form.addEventListener('input', begin); form.addEventListener('change', () => { render(); begin(); });
@@ -86,15 +86,15 @@ if (pdp && form) {
   const setErr = (el, msg) => { const s = el.closest('.fld').querySelector('.err'); if (s) s.textContent = msg || ''; el.setAttribute && el.setAttribute('aria-invalid', msg ? 'true' : 'false'); };
   const phoneOk = v => /^(?:\+?88)?01[3-9]\d{8}$/.test(v.replace(/[\s-]/g, ''));
   const rules = {
-    name: v => v.trim().length < 2 ? 'Please enter your name · আপনার নাম লিখুন' : '',
-    phone: v => !phoneOk(v) ? 'Enter a valid mobile number, e.g. 01712345678 · সঠিক মোবাইল নম্বর দিন' : '',
-    address: v => v.trim().length < 10 ? 'Please enter your full address · সম্পূর্ণ ঠিকানা লিখুন' : ''
+    name: v => v.trim().length < 2 ? 'Please enter your name' : '',
+    phone: v => !phoneOk(v) ? 'Enter a valid mobile number, e.g. 01712345678' : '',
+    address: v => v.trim().length < 10 ? 'Please enter your full address' : ''
   };
   const checkField = k => { const f = el(k), m = rules[k](f.value); setErr(f, m); return !m; };
   const validate = () => {
     const bad = Object.keys(rules).filter(k => !checkField(k));
     const noSize = !size();
-    $('#sizeErr').textContent = noSize ? 'Please choose a size · সাইজ বাছাই করুন' : '';
+    $('#sizeErr').textContent = noSize ? 'Please choose a size' : '';
     const first = bad.length ? el(bad[0]) : noSize ? $('.szs') : null;
     if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return !first;

@@ -93,7 +93,7 @@ def head(title, desc, page, img="img/sky-blue-yellow.webp", extra=""):
 def header(active):
     def a(href, label, key):
         return f'<a href="{href}"{" class=on" if active == key else ""}>{label}</a>'
-    return f'''<div class="topbar"><div class="wrap">{ic("cash")} Cash on Delivery <span class="dot">•</span> {ic("truck")} Home delivery across Bangladesh <span class="dot">•</span> {ic("exchange")} 72-hour exchange</div></div>
+    return f'''<div class="topbar"><div class="wrap"><span>Designed for European markets</span><span>{ic("cash")} Cash on Delivery</span><span>{ic("truck")} Delivery across Bangladesh</span><span>{ic("exchange")} 72-hour exchange</span></div></div>
 <header class="hdr"><div class="wrap hdr-in">
   <a class="brand" href="index.html" aria-label="Babyglee home"><img src="img/logo.webp" alt="Babyglee — Because we love them!" width="117" height="87"></a>
   <nav class="nav" id="nav" aria-label="Main">
@@ -111,7 +111,7 @@ def footer():
   <div class="wrap ftr-grid">
     <div class="ftr-brand">
       <img src="img/logo.webp" alt="Babyglee" width="117" height="87">
-      <p>Comfortable, safe and affordable sneakers for kids aged 1–10. Designed with love, made in Bangladesh.</p>
+      <p>European-market kids' sneakers for ages 1–10, now delivered to families across Bangladesh.</p>
       <div class="soc"><a href="https://facebook.com/Babyglee.Official" target="_blank" rel="noopener" aria-label="Babyglee on Facebook">{ic("facebook")}</a>
       <a href="https://wa.me/{WA}" target="_blank" rel="noopener" aria-label="WhatsApp">{ic("whatsapp")}</a></div>
     </div>
@@ -187,9 +187,9 @@ def page_home():
   <div class="blob b1"></div><div class="blob b2"></div>
   <div class="wrap hero-in">
     <div class="hero-copy">
-      <span class="pill">Kids' sneakers · Ages 1–10 · EU 21–36</span>
+      <span class="pill">Designed for Europe · Now in Bangladesh</span>
       <h1>Happy feet.<br><span class="grad">Bouncy steps.</span></h1>
-      <p class="lead">Soft, light and easy-to-wear sneakers kids love, built with a memory-foam insole, wide toe box and anti-slip sole that parents can trust.</p>
+      <p class="lead">European-market kids' sneakers, now delivered across Bangladesh: memory-foam insole, wide toe box and an anti-slip sole that parents can trust.</p>
       <div class="cta"><a class="btn" href="shop.html">Shop the Bounce series</a><a class="btn ghost" href="#size">Find my kid's size</a></div>
       <div class="price-tag"><s>{fmt(LIST)}</s><b>{fmt(PRICE)}</b><span>Cash on Delivery</span></div>
     </div>
@@ -225,9 +225,9 @@ def page_home():
 </div></section>
 <section class="sec alt"><div class="wrap about-teaser">
   <div><span class="eyebrow">Our story</span><h2>Because we love them</h2>
-  <p>Babyglee started in 2016 with a simple idea: kids deserve comfortable, well-made shoes at honest prices. Every pair is designed with foot development in mind and made in Bangladesh, from materials tested against international chemical-safety limits.</p>
+  <p>Babyglee started in 2016 with a simple idea: kids deserve comfortable, well-made shoes at honest prices. Our sneakers are designed in-house for European markets, with an EU office in Italy, and are now delivered to families across Bangladesh. Every pair is made with foot development in mind, from materials tested against international chemical-safety limits.</p>
   <a class="btn ghost" href="about.html">More about Babyglee</a></div>
-  <ul class="checks"><li>{ic("check")} Designed in-house, made in Bangladesh</li><li>{ic("check")} Registered trademark (Reg. No. 210926)</li><li>{ic("check")} Every batch inspected before packing</li><li>{ic("check")} Dhaka office &amp; local support in Bangla</li></ul>
+  <ul class="checks"><li>{ic("check")} Designed in-house for European markets</li><li>{ic("check")} Registered trademark (Reg. No. 210926)</li><li>{ic("check")} Every batch inspected before packing</li><li>{ic("check")} EU office in Italy, support team in Dhaka</li></ul>
 </div></section>
 <section class="sec"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">FAQ</span><h2>Quick answers</h2></div>{faq_block()}</div></section>
 <section class="cta-band"><div class="wrap"><h2>Questions? Talk to a real person.</h2><p>We reply 9 AM – 7 PM (BST).</p>
@@ -274,27 +274,27 @@ def page_product(p):
         <li>{ic("check")} Anti-slip rubber sole with shock absorption</li>
         <li>{ic("check")} Memory-foam insole &amp; wide toe box for growing feet</li>
       </ul>
-      <a class="btn lg block-m" href="#order">Order now · অর্ডার করুন</a>
+      <a class="btn lg block-m" href="#order">Order now</a>
       <div class="mini-trust"><span>{ic("cash")} Cash on Delivery</span><span>{ic("exchange")} 72-hr exchange</span><span>{ic("truck")} Home delivery</span></div>
     </div>
   </div>
 </section>
 {trust_strip()}
 <section class="sec" id="order"><div class="wrap narrow-lg">
-  <div class="sec-head"><span class="eyebrow">Single-page checkout</span><h2>Order now <span class="bn">· অর্ডার করুন</span></h2><p>Fill in your details and we'll call to confirm your size and delivery. Pay on delivery.</p></div>
+  <div class="sec-head"><span class="eyebrow">Secure checkout</span><h2>Order now</h2><p>Fill in your details and we'll call to confirm your size and delivery. Pay on delivery.</p></div>
   <div class="co-grid">
     <form id="orderForm" novalidate>
-      <div class="fld"><label for="f-name">Your name <i>আপনার নাম</i></label><input id="f-name" name="name" autocomplete="name" required><small class="err"></small></div>
-      <div class="fld"><label for="f-phone">Mobile number <i>মোবাইল নম্বর</i></label><input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX" required><small class="err"></small></div>
-      <div class="fld"><label for="f-addr">Full address <i>সম্পূর্ণ ঠিকানা</i></label><textarea id="f-addr" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area, thana, district" required></textarea><small class="err"></small></div>
-      <fieldset class="fld"><legend>Delivery area <i>ডেলিভারি এলাকা</i></legend>
+      <div class="fld"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" required><small class="err"></small></div>
+      <div class="fld"><label for="f-phone">Mobile number</label><input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX" required><small class="err"></small></div>
+      <div class="fld"><label for="f-addr">Full address</label><textarea id="f-addr" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area, thana, district" required></textarea><small class="err"></small></div>
+      <fieldset class="fld"><legend>Delivery area</legend>
         <div class="opts"><label class="opt"><input type="radio" name="area" value="dhaka" checked><span><b>Inside Dhaka</b><em id="chD"></em></span></label>
         <label class="opt"><input type="radio" name="area" value="outside"><span><b>Outside Dhaka</b><em id="chO"></em></span></label></div></fieldset>
-      <fieldset class="fld"><legend>Shoe size (EU) <i>সাইজ</i> <a href="#sizes" class="lnk">Size guide</a></legend>
+      <fieldset class="fld"><legend>Shoe size (EU) <a href="#sizes" class="lnk">Size guide</a></legend>
         <div class="szs">{sizes}</div><small class="err" id="sizeErr"></small></fieldset>
-      <div class="fld inl"><label>Quantity <i>পরিমাণ</i></label><div class="qty"><button type="button" id="qm" aria-label="Decrease">−</button><output id="qv">1</output><button type="button" id="qp" aria-label="Increase">+</button></div></div>
+      <div class="fld inl"><label>Quantity</label><div class="qty"><button type="button" id="qm" aria-label="Decrease">−</button><output id="qv">1</output><button type="button" id="qp" aria-label="Increase">+</button></div></div>
       <p class="err-box" id="sendErr" role="alert" hidden>Sorry, we couldn't place your order. Please check your connection and try again, or call us on {PHONE_DISPLAY}.</p>
-      <button class="btn lg block" type="submit" id="submitBtn">Confirm order · অর্ডার কনফার্ম করুন</button>
+      <button class="btn lg block" type="submit" id="submitBtn">Confirm order</button>
       <p class="fine center">{ic("shield")} Cash on Delivery. Your details are used only to deliver your order.</p>
     </form>
     <aside class="summary" aria-label="Order summary">
@@ -304,7 +304,7 @@ def page_product(p):
     </aside>
   </div>
   <div class="done" id="done" hidden>
-    <span class="okc">{ic("check")}</span><h3>Thank you! Your order is placed. <span class="bn">অর্ডার সম্পন্ন হয়েছে</span></h3>
+    <span class="okc">{ic("check")}</span><h3>Thank you! Your order is placed.</h3>
     <p>Order ID <b id="oid"></b></p>
     <dl class="recap"><div><dt>Product</dt><dd id="rP"></dd></div><div><dt>Size</dt><dd id="rS"></dd></div><div><dt>Deliver to</dt><dd id="rA"></dd></div><div class="tot"><dt>Pay on delivery</dt><dd id="rT"></dd></div></dl>
     <p>Our team will call you on <b id="rPh"></b> to confirm your size and delivery. Please keep your phone nearby.</p>
@@ -320,7 +320,7 @@ def page_product(p):
   <div class="sec-head"><span class="eyebrow">More colours</span><h2>You may also like</h2></div>
   <div class="grid">{"".join(card(q) for q in PRODUCTS if q is not p)}</div></div></section>
 <section class="sec"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">FAQ</span><h2>Quick answers</h2></div>{faq_block()}</div></section>
-<div class="sticky-cta" id="stickyCta"><div><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></div><a class="btn" href="#order">Order now · অর্ডার করুন</a></div>
+<div class="sticky-cta" id="stickyCta"><div><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></div><a class="btn" href="#order">Order now</a></div>
 '''
     h += footer()
     write(p["slug"] + ".html", h)
@@ -331,23 +331,23 @@ def simple_page(fname, title, desc, key, eyebrow, h1, body):
     write(fname, h + footer())
 
 def page_about():
-    body = f'''<p>Babyglee makes comfortable, safe and affordable sneakers for children aged 1 to 10. Our shoes are designed in-house and made in Bangladesh, with the sizes, materials and details that growing feet actually need.</p>
+    body = f'''<p>Babyglee makes comfortable, safe and affordable sneakers for children aged 1 to 10. Our shoes are designed in-house for European markets, with the sizes, materials and details that growing feet actually need, and are now delivered to families across Bangladesh.</p>
 <h2>Our story</h2><p>Babyglee was founded in 2016 on a simple belief: kids deserve well-made shoes at honest prices. Our tagline says it best: <em>Because we love them!</em> Every design starts with comfort and foot development, then adds the colours and details kids love.</p>
 <h2>What goes into every pair</h2>
 <ul class="checks plain"><li>{ic("check")} Multi-density sole for joint protection</li><li>{ic("check")} Memory-foam insole for all-day comfort</li><li>{ic("check")} Wide toe box designed with foot development in mind</li><li>{ic("check")} Fast-lock velcro strap so children can put shoes on alone</li><li>{ic("check")} Anti-slip rubber tread for playgrounds, courts and skate parks</li></ul>
 <h2>Quality &amp; safety</h2><p>We follow chemical limits for REACH, phthalates and azo dyes, and test for flex resistance, outsole abrasion and strap tensile strength. Every batch is inspected before packing, and batch testing is available on request.</p>
 <h2>Design &amp; production</h2><p>Designed with our design partner Bengalstitch and produced in Bangladesh. Babyglee is a registered trademark in Bangladesh (Reg. No. 210926, Class 25) and operates under trade licence TRAD/DNCC/090476/2022. Babyglee is a concern of AMC Knit Composite Ltd.</p>
-<h2>Where to find us</h2><p>Office: Pallabi, Mirpur 12, Dhaka. Factory: Chittagong, Bangladesh. Need help choosing a size? <a href="contact.html">Talk to our team</a>.</p>
+<h2>Where to find us</h2><p>EU office: Viale R. Piaggio 5/a, 56025 Pontedera, Italy. Dhaka office: Pallabi, Mirpur 12. Factory: Chittagong, Bangladesh. Need help choosing a size? <a href="contact.html">Talk to our team</a>.</p>
 <p><a class="btn" href="shop.html">Shop the Bounce series</a></p>'''
     simple_page("about.html", "About Us", "Babyglee makes comfortable, safe and affordable kids' sneakers designed and made in Bangladesh since 2016.", "about", "About us", "Because we love them", body)
 
 def page_contact():
     cards = f'''<div class="contact-grid">
-<a class="cc" href="https://wa.me/{WA}" target="_blank" rel="noopener">{ic("whatsapp")}<b>WhatsApp</b><span>{PHONE_DISPLAY}<br>+880 1601-261620</span></a>
-<a class="cc" href="tel:+8801974974973">{ic("phone")}<b>Call us</b><span>{PHONE_DISPLAY}</span></a>
+<a class="cc" href="https://wa.me/{WA}" target="_blank" rel="noopener">{ic("whatsapp")}<b>WhatsApp &amp; phone</b><span>{PHONE_DISPLAY}<br>+880 1601-261620</span></a>
 <a class="cc" href="mailto:info@babygleebd.com">{ic("mail")}<b>Email</b><span>info@babygleebd.com</span></a>
 <a class="cc" href="https://facebook.com/Babyglee.Official" target="_blank" rel="noopener">{ic("facebook")}<b>Facebook</b><span>Babyglee.Official</span></a>
 <div class="cc">{ic("pin")}<b>Dhaka office</b><span>Pallabi, Mirpur 12, Dhaka</span></div>
+<div class="cc">{ic("pin")}<b>EU office</b><span>Viale R. Piaggio 5/a<br>56025 Pontedera, Italy</span></div>
 <div class="cc">{ic("clock")}<b>Support hours</b><span>9 AM – 7 PM (BST)</span></div></div>
 <p class="center fine">Not sure which size to order? Send us your child's foot length and we'll help.</p>'''
     simple_page("contact.html", "Contact Us", "Contact Babyglee by WhatsApp, phone or email. Dhaka office at Pallabi, Mirpur 12.", "contact", "Contact", "We'd love to hear from you", cards)
