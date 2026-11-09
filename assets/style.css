@@ -58,6 +58,8 @@ button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
 .price-tag s{color:#8a9494;font-weight:700}.price-tag b{font:700 1.8rem 'Fredoka';color:var(--coral)}.price-tag span{font-size:.8rem;font-weight:800;color:var(--teal-dd)}
 .price-tag.lg b{font-size:2.3rem}
 
+.usd-line{margin-top:6px;font:700 .88rem 'Nunito';color:var(--ink)}.usd-line span{color:var(--mut);font-weight:600}
+.usd-note{margin-top:10px;font-weight:700;color:var(--ink)}.usd-note b{font:600 1.15rem 'Fredoka'}.usd-note span{display:block;font-size:.82rem;font-weight:600;color:var(--mut)}
 /* 3D stage (pointer tilt via JS sets --rx/--ry) */
 .stage{position:relative;aspect-ratio:1/.9;perspective:1000px;display:grid;place-items:center}
 .stage .disc{position:absolute;width:82%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#bff0ef 70%);box-shadow:inset 0 -18px 40px rgba(36,186,188,.25),0 30px 50px -30px rgba(15,122,124,.5)}

@@ -5,6 +5,7 @@ import json, pathlib
 OUT = pathlib.Path(__file__).resolve().parent.parent
 BASE = "https://dmxasif-commits.github.io/babyglee/"  # change if you move to a custom domain
 PRICE, LIST = 1290, 1800
+PRICE_USD = 15  # international price, no discount (1,800 BDT list price at ~123 BDT/USD = $14.63)
 WA = "8801974974973"
 PHONE_DISPLAY = "+880 1974-974973"
 
@@ -147,7 +148,8 @@ def card(p):
   <div class="pic"><img src="img/{p["img"]}.webp" alt="Babyglee Bounce sneaker — {p["name"]}" loading="lazy"></div>
   <div class="pbody"><span class="sw" style="background:{p["color"]}"></span><h3>Bounce — {p["name"]}</h3>
   <p class="pmeta">Kids' casual sneaker · EU 21–36</p>
-  <div class="prow"><span class="price"><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></span><span class="go">View &amp; order →</span></div></div>
+  <div class="prow"><span class="price"><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></span><span class="go">View &amp; order →</span></div>
+  <p class="usd-line">US${PRICE_USD} <span>international price</span></p></div>
 </a>'''
 
 FEATURES = [
@@ -192,6 +194,7 @@ def page_home():
       <p class="lead">European-market kids' sneakers, now delivered across Bangladesh: memory-foam insole, wide toe box and an anti-slip sole that parents can trust.</p>
       <div class="cta"><a class="btn" href="shop.html">Shop the Bounce series</a><a class="btn ghost" href="#size">Find my kid's size</a></div>
       <div class="price-tag"><s>{fmt(LIST)}</s><b>{fmt(PRICE)}</b><span>Cash on Delivery</span></div>
+      <p class="usd-note">International price: <b>US${PRICE_USD}</b></p>
     </div>
     <div class="stage" id="stage">
       <div class="disc"></div>
@@ -268,6 +271,7 @@ def page_product(p):
       <h1>Bounce — {p["name"]}</h1>
       <p class="pmeta">Kids' casual sneaker · EU 21–36 · Ages 1–10</p>
       <div class="price-tag lg"><s>{fmt(LIST)}</s><b>{fmt(PRICE)}</b><span>You save {fmt(LIST-PRICE)}</span></div>
+      <p class="usd-note">International price: <b>US${PRICE_USD}</b> <span>USD price is shown for reference. You pay in BDT on delivery.</span></p>
       <ul class="bul">
         <li>{ic("check")} Breathable mesh &amp; microfiber synthetic leather upper</li>
         <li>{ic("check")} Velcro strap with stretch bands, so kids can put them on alone</li>
@@ -379,7 +383,7 @@ def page_privacy():
 def page_terms():
     body = '''<p class="fine">Last updated: 2025</p>
 <h2>Using this website</h2><p>By using babygleebd.com or placing an order, you agree to these terms. Please read them with our Privacy Policy and Shipping &amp; Returns policy.</p>
-<h2>Products &amp; prices</h2><p>We try to show colours and details accurately, but screens differ slightly. Prices are in Bangladeshi Taka (BDT) and may change without notice. The price shown at the time you place your order applies.</p>
+<h2>Products &amp; prices</h2><p>We try to show colours and details accurately, but screens differ slightly. Prices are in Bangladeshi Taka (BDT) and may change without notice. The price shown at the time you place your order applies. USD prices are shown for reference only; orders are charged in BDT.</p>
 <h2>Orders</h2><ul><li>An order is confirmed after our team contacts you to verify your details and size.</li><li>We may cancel an order if details cannot be verified or an item is unavailable.</li><li>Please provide a correct phone number and address so delivery is not delayed.</li></ul>
 <h2>Payment</h2><p>Payment is by Cash on Delivery unless we tell you otherwise.</p>
 <h2>Exchanges</h2><p>Exchanges are handled under our <a href="shipping-returns.html">Shipping &amp; Returns</a> policy (72 hours from delivery; delivery and return charges apply).</p>
