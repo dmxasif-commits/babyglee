@@ -223,8 +223,10 @@ a.cc:hover{transform:translateY(-4px);border-color:var(--teal);box-shadow:var(--
   .sec{padding:48px 0}.wrap{padding:0 16px}
   .topbar .wrap{gap:4px 16px;font-size:.78rem}.topbar span:nth-child(n+3){display:none}
   .burger{display:grid}
-  .nav{position:fixed;top:0;right:0;height:100%;width:min(300px,82%);background:#fff;flex-direction:column;align-items:stretch;gap:6px;padding:86px 24px;transform:translateX(105%);transition:transform .3s,box-shadow .3s;z-index:70;font-size:1.15rem}
-  .nav.open{transform:none;box-shadow:-12px 0 40px rgba(0,0,0,.18)}.nav .btn{margin-top:14px}
+  .nav{display:none;position:fixed;top:0;right:0;height:100%;width:min(300px,82%);background:#fff;flex-direction:column;align-items:stretch;gap:6px;padding:86px 24px;z-index:70;font-size:1.15rem;box-shadow:-12px 0 40px rgba(0,0,0,.18)}
+  .nav.open{display:flex;animation:slideIn .25s ease-out}
+  @keyframes slideIn{from{transform:translateX(100%)}to{transform:none}}
+  .nav .btn{margin-top:14px}
   .burger{position:relative;z-index:80}
   .hdr-in{height:62px}.brand img{height:46px}
   .hero h1{font-size:2.7rem}.b2{display:none}.cta .btn{flex:1 1 100%}
