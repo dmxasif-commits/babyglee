@@ -13,6 +13,15 @@ if (burger) {
   document.addEventListener('keydown', e => e.key === 'Escape' && set(false));
 }
 
+/* ---------- ship-to selector ---------- */
+const shipBtn = $('#shipBtn'), shipMenu = $('#shipMenu');
+if (shipBtn) {
+  const setShip = o => { shipMenu.hidden = !o; shipBtn.setAttribute('aria-expanded', o); };
+  shipBtn.addEventListener('click', e => { e.stopPropagation(); setShip(shipMenu.hidden); });
+  document.addEventListener('click', e => { if (!shipMenu.hidden && !shipMenu.contains(e.target)) setShip(false); });
+  document.addEventListener('keydown', e => e.key === 'Escape' && setShip(false));
+}
+
 /* ---------- 3D tilt (pointer devices only) ---------- */
 const fine = matchMedia('(hover:hover) and (pointer:fine)').matches;
 if (fine) {
@@ -109,7 +118,7 @@ if (pdp && form) {
     if (sending || !validate()) return;
     sending = true; $('#submitBtn').disabled = true;
     const t = totals(), id = 'BG' + Date.now().toString(36).toUpperCase().slice(-7);
-    const order = { id, product: name, slug: pdp.dataset.slug, size: 'EU ' + size(), qty, name: el('name').value.trim(), phone: el('phone').value.trim(),
+    const order = { id, product: name, slug: pdp.dataset.slug, size: 'EU ' + size(), qty, name: el('name').value.trim(), phone: el('phone').value.trim(), country: 'Bangladesh',
       address: el('address').value.trim(), area: area() === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka', subtotal: t.sub, delivery: t.del, total: t.tot, payment: 'Cash on Delivery', page: location.href, time: new Date().toISOString() };
     $('#sendErr').hidden = true;
     let sent = true;

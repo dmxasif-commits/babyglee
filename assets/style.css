@@ -28,11 +28,29 @@ button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
 .hdr{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .hdr-in{display:flex;align-items:center;justify-content:space-between;height:68px}
 .brand img{height:54px;width:auto}
-.nav{display:flex;align-items:center;gap:26px;font-weight:800}
+.nav{display:flex;align-items:center;gap:26px;font-weight:800;margin-left:auto}
 .nav a:not(.btn){padding:6px 0;border-bottom:3px solid transparent}
 .nav a.on,.nav a:not(.btn):hover{border-color:var(--teal)}
 .burger{display:none;width:44px;height:44px;border-radius:12px;background:var(--teal-l);place-items:center;font-size:1.3rem}
 
+/* ship-to selector */
+.ship{position:relative;margin-left:18px}
+.ship-btn{display:flex;align-items:center;gap:9px;padding:6px 12px 6px 8px;border:2px solid var(--line);border-radius:12px;background:#fff;text-align:left;line-height:1.15;font-weight:800;font-size:.9rem;transition:border-color .15s}
+.ship-btn:hover,.ship-btn[aria-expanded=true]{border-color:var(--teal)}
+.ship-t small{display:block;font-size:.68rem;font-weight:700;color:var(--mut);letter-spacing:.04em;text-transform:uppercase}
+.cc-code{display:inline-grid;place-items:center;min-width:30px;height:24px;border-radius:7px;background:linear-gradient(135deg,#0a8f5a,#0e6b46);color:#fff;font:700 .72rem 'Fredoka';letter-spacing:.06em;padding:0 5px}
+.chev{font-size:.95rem;color:var(--mut);transition:transform .2s}.ship-btn[aria-expanded=true] .chev{transform:rotate(180deg)}
+.ship-menu{position:absolute;right:0;top:calc(100% + 10px);width:310px;background:#fff;border:2px solid var(--teal-l);border-radius:18px;box-shadow:var(--sh);padding:16px;z-index:90}
+.ship-menu[hidden]{display:none}
+.sm-h{font:700 .75rem 'Nunito';letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:8px}
+.sm-opt{display:flex;align-items:center;gap:10px;border:2px solid var(--teal);background:var(--teal-xl);border-radius:12px;padding:10px 12px}.sm-opt b{flex:1}.sm-opt .ic{color:var(--teal)}
+.sm-n{font-size:.85rem;color:var(--mut);margin:12px 0}
+.sm-l{list-style:none;display:grid;gap:6px;font-weight:700;font-size:.88rem;border-top:1px dashed var(--line);padding-top:12px}.sm-l .ic{color:var(--teal)}
+.country{display:flex;align-items:center;gap:10px;border:2px solid #cfe3e3;border-radius:12px;padding:6px 10px;background:var(--teal-xl)}
+.country input{border:0!important;background:transparent!important;padding:7px 4px!important;font-weight:800;box-shadow:none!important;cursor:default}
+.pl{margin-top:14px;font:700 .78rem 'Nunito';letter-spacing:.08em;text-transform:uppercase;color:var(--teal-dd)}.pl+.price-tag{margin-top:6px}
+.bd-note{margin-top:6px}
+.intl{background:linear-gradient(180deg,#fff,var(--teal-xl))}
 /* buttons */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 26px;border-radius:14px;background:var(--teal);color:#fff;font-weight:600;font-size:1.02rem;box-shadow:0 5px 0 var(--teal-dd),0 14px 20px -10px rgba(15,122,124,.5);transition:transform .12s,box-shadow .12s;text-align:center;border:2px solid transparent;cursor:pointer}
 .btn:hover{transform:translateY(-2px);box-shadow:0 7px 0 var(--teal-dd),0 18px 24px -10px rgba(15,122,124,.5)}
@@ -225,6 +243,7 @@ a.cc:hover{transform:translateY(-4px);border-color:var(--teal);box-shadow:var(--
   .sec{padding:48px 0}.wrap{padding:0 16px}
   .topbar .wrap{gap:4px 16px;font-size:.78rem}.topbar span:nth-child(n+3){display:none}
   .burger{display:grid}
+  .ship{margin-left:auto;margin-right:10px}.ship-t small{display:none}.ship-btn{padding:5px 8px 5px 6px;font-size:.82rem}.ship-t{white-space:nowrap}.ship-menu{position:fixed;left:12px;right:12px;top:112px;width:auto}
   .nav{display:none;position:fixed;top:0;right:0;height:100%;width:min(300px,82%);background:#fff;flex-direction:column;align-items:stretch;gap:6px;padding:86px 24px;z-index:70;font-size:1.15rem;box-shadow:-12px 0 40px rgba(0,0,0,.18)}
   .nav.open{display:flex;animation:slideIn .25s ease-out}
   @keyframes slideIn{from{transform:translateX(100%)}to{transform:none}}
