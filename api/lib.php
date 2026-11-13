@@ -45,7 +45,7 @@ function migrate(PDO $pdo, bool $sqlite): void {
     $eng = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
     $ver = 0;
     try { $ver = (int) $pdo->query("SELECT v FROM settings WHERE k = 'schema_version'")->fetchColumn(); } catch (Throwable $e) { /* first run */ }
-    if ($ver >= 4) return;
+    if ($ver >= 5) return;
     if ($ver < 1) {
     $ai = $sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT AUTO_INCREMENT PRIMARY KEY';
     $eng = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
@@ -91,12 +91,24 @@ function migrate(PDO $pdo, bool $sqlite): void {
         source VARCHAR(20) NOT NULL DEFAULT 'store', name VARCHAR(120) NOT NULL DEFAULT '', phone VARCHAR(20) NOT NULL, email VARCHAR(160) NOT NULL DEFAULT '', district VARCHAR(60) NOT NULL DEFAULT '',
         address TEXT, area VARCHAR(30) NOT NULL DEFAULT '', items TEXT, tracking TEXT, ip VARCHAR(45) NOT NULL DEFAULT '', note TEXT)$eng");
     try { $pdo->exec('CREATE INDEX idx_leads_phone ON leads (phone)'); } catch (Throwable $e) { /* index already exists */ }
-    set_setting('schema_version', '4');
+    /* version 5: staff accounts, who did what, ad spend */
+    $pdo->exec("CREATE TABLE IF NOT EXISTS users (id $ai, username VARCHAR(40) NOT NULL UNIQUE, name VARCHAR(80) NOT NULL, pass_hash VARCHAR(255) NOT NULL, role VARCHAR(10) NOT NULL DEFAULT 'staff', active TINYINT NOT NULL DEFAULT 1, created_at DATETIME NOT NULL)$eng");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS ad_spend (id $ai, day DATE NOT NULL, campaign VARCHAR(190) NOT NULL, amount INT NOT NULL, note VARCHAR(200) NOT NULL DEFAULT '')$eng");
+    foreach (["ALTER TABLE order_log ADD COLUMN by_user VARCHAR(80) NOT NULL DEFAULT ''", "ALTER TABLE orders ADD COLUMN created_by VARCHAR(80) NOT NULL DEFAULT ''"] as $q) {
+        try { $pdo->exec($q); } catch (Throwable $e) { /* column already exists */ }
+    }
+    /* the single admin password of earlier versions becomes the user "admin" */
+    $old = $pdo->query("SELECT v FROM settings WHERE k = 'admin_hash'")->fetchColumn();
+    if ($old && !(int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()) {
+        $pdo->prepare("INSERT INTO users (username, name, pass_hash, role, active, created_at) VALUES ('admin', 'Admin', ?, 'admin', 1, ?)")->execute([$old, now()]);
+        $pdo->exec("DELETE FROM settings WHERE k = 'admin_hash'");
+    }
+    set_setting('schema_version', '5');
 }
 
 function now(): string { return date('Y-m-d H:i:s'); }
 function h($s): string { return htmlspecialchars((string) $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
-function taka($n): string { return '৳' . number_format((int) $n); }
+function taka($n): string { $n = (int) round((float) $n); return ($n < 0 ? '-' : '') . '৳' . number_format(abs($n)); }
 
 function setting(string $k, ?string $default = null): string {
     static $all = null;

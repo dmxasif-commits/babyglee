@@ -23,37 +23,77 @@ function go(string $q = ''): void { header('Location: index.php' . ($q !== '' ? 
 function flash(?string $m = null): string { if ($m !== null) { $_SESSION['flash'] = $m; return ''; } $f = $_SESSION['flash'] ?? ''; unset($_SESSION['flash']); return $f; }
 function badge(string $s): string { return '<span class="st st-' . h($s) . '">' . h(BG_STATUSES[$s] ?? $s) . '</span>'; }
 
-/* ---------------- first-time setup and login ---------------- */
-$hash = setting('admin_hash');
+/* ---------------- first-time setup, login, roles ---------------- */
 $error = '';
-if ($hash === '') {
+$validUser = fn($u) => (bool) preg_match('/^[a-z0-9_.-]{3,40}$/', $u);
+if (!(int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()) {
     if ($isPost) {
-        $pw = (string) ($_POST['password'] ?? '');
+        $pw = (string) ($_POST['password'] ?? ''); $un = strtolower(trim((string) ($_POST['username'] ?? 'admin')));
         if (!hash_equals((string) (cfg()['setup_key'] ?? ''), (string) ($_POST['setup_key'] ?? '')) || strpos((string) cfg()['setup_key'], 'CHANGE-THIS') === 0) $error = 'Setup key is wrong (or still the sample value in api/config.php).';
+        elseif (!$validUser($un)) $error = 'Username: 3-40 characters, only small letters, numbers, dot, dash or underscore.';
         elseif (strlen($pw) < 10) $error = 'Password must be at least 10 characters.';
         elseif ($pw !== ($_POST['password2'] ?? '')) $error = 'The two passwords do not match.';
-        else { set_setting('admin_hash', password_hash($pw, PASSWORD_DEFAULT)); session_regenerate_id(true); $_SESSION['admin'] = true; flash('Admin password created. Welcome!'); go(); }
+        else {
+            $pdo->prepare("INSERT INTO users (username, name, pass_hash, role, active, created_at) VALUES (?, ?, ?, 'admin', 1, ?)")->execute([$un, mb_substr(trim((string) ($_POST['name'] ?? '')), 0, 80) ?: 'Admin', password_hash($pw, PASSWORD_DEFAULT), now()]);
+            session_regenerate_id(true); $_SESSION['uid'] = (int) $pdo->lastInsertId(); flash('Admin account created. Welcome!'); go();
+        }
     }
     page_head('Set up admin', false);
-    echo '<form method="post" class="card auth"><h1>Set up admin</h1><p class="mut">First visit: create the admin password. The setup key is the one you wrote in <code>api/config.php</code>.</p>' . ($error ? '<p class="err">' . h($error) . '</p>' : '') . $csrf .
-        '<label>Setup key<input name="setup_key" required autocomplete="off"></label><label>New password (10+ characters)<input type="password" name="password" required minlength="10" autocomplete="new-password"></label>
+    echo '<form method="post" class="card auth"><h1>Set up admin</h1><p class="mut">First visit: create the owner account. The setup key is the one you wrote in <code>api/config.php</code>.</p>' . ($error ? '<p class="err">' . h($error) . '</p>' : '') . $csrf .
+        '<label>Setup key<input name="setup_key" required autocomplete="off"></label><label>Username<input name="username" required value="admin" autocapitalize="none" autocomplete="username"></label><label>Your name<input name="name" value="Admin" maxlength="80"></label>
+        <label>New password (10+ characters)<input type="password" name="password" required minlength="10" autocomplete="new-password"></label>
         <label>Repeat password<input type="password" name="password2" required autocomplete="new-password"></label><button class="btn">Create admin</button></form>';
     page_foot(); exit;
 }
-if (empty($_SESSION['admin'])) {
+$me = null;
+if (!empty($_SESSION['uid'])) { $u = $pdo->prepare('SELECT * FROM users WHERE id = ? AND active = 1'); $u->execute([(int) $_SESSION['uid']]); $me = $u->fetch() ?: null; }
+if (!$me) {
+    unset($_SESSION['uid']);
     if ($isPost) {
         $ip = client_ip();
         $c = $pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND created_at > ?'); $c->execute([$ip, date('Y-m-d H:i:s', time() - 900)]);
+        $u = $pdo->prepare('SELECT * FROM users WHERE username = ? AND active = 1'); $u->execute([strtolower(trim((string) ($_POST['username'] ?? '')))]); $cand = $u->fetch();
         if ((int) $c->fetchColumn() >= 8) $error = 'Too many attempts. Wait 15 minutes and try again.';
-        elseif (password_verify((string) ($_POST['password'] ?? ''), $hash)) { session_regenerate_id(true); $_SESSION['admin'] = true; $_SESSION['csrf'] = bin2hex(random_bytes(16)); go(); }
-        else { $pdo->prepare('INSERT INTO login_attempts (ip, created_at) VALUES (?, ?)')->execute([$ip, now()]); $error = 'Wrong password.'; }
+        elseif ($cand && password_verify((string) ($_POST['password'] ?? ''), $cand['pass_hash'])) { session_regenerate_id(true); $_SESSION['uid'] = (int) $cand['id']; $_SESSION['csrf'] = bin2hex(random_bytes(16)); go(); }
+        else { $pdo->prepare('INSERT INTO login_attempts (ip, created_at) VALUES (?, ?)')->execute([$ip, now()]); $error = 'Wrong username or password.'; }
     }
     page_head('Log in', false);
     echo '<form method="post" class="card auth"><h1>Babyglee admin</h1>' . ($error ? '<p class="err">' . h($error) . '</p>' : '') . $csrf .
-        '<label>Password<input type="password" name="password" required autofocus autocomplete="current-password"></label><button class="btn">Log in</button></form>';
+        '<label>Username<input name="username" required autofocus autocapitalize="none" autocomplete="username" value="' . h($_POST['username'] ?? '') . '"></label><label>Password<input type="password" name="password" required autocomplete="current-password"></label><button class="btn">Log in</button></form>';
     page_foot(); exit;
 }
+$isAdmin = $me['role'] === 'admin';
 if ($page === 'logout' && $isPost) { $_SESSION = []; session_destroy(); go(); }
+/* Staff can work on orders only. Products, prices, profit, ads, settings, exports and accounts are for admins. */
+$staffPages = ['dashboard', 'orders', 'order', 'leads', 'lead', 'print', 'neworder', 'account'];
+$staffActs = ['status', 'ship', 'bulk', 'lead_cancel', 'lead_reopen', 'lead_delete', 'lead_convert', 'note', 'neworder', 'password'];
+if (!$isAdmin && (!in_array($page, $staffPages, true) || ($isPost && !in_array((string) ($_POST['act'] ?? ''), $staffActs, true)))) { flash('That page is only for admins.'); go(); }
+
+/* Creates an order from the admin panel (manual order or a confirmed incomplete order). Prices, delivery and stock are handled here. */
+function make_order(PDO $pdo, array $in, string $source, string $status, array $tr, string $email, string $ip, string $note, string $logNote, string $by): array {
+    $name = mb_substr(trim((string) ($in['name'] ?? '')), 0, 120); $phone = bd_phone((string) ($in['phone'] ?? '')); $district = mb_substr(trim((string) ($in['district'] ?? '')), 0, 60); $address = mb_substr(trim((string) ($in['address'] ?? '')), 0, 600);
+    $areaKey = ($in['area'] ?? '') === 'dhaka' ? 'dhaka' : 'outside'; $cat = products(true); $items = []; $sub = 0; $cost = 0;
+    foreach ((array) ($in['it_slug'] ?? []) as $n => $slug) {
+        $size = (int) ($in['it_size'][$n] ?? 0); $qty = max(1, min(10, (int) ($in['it_qty'][$n] ?? 1))); $p = $cat[(string) $slug] ?? null;
+        if (!$p || !isset($p['variants'][$size])) return ['err' => 'Choose a size that exists for each product.'];
+        if ($p['track'] && $p['variants'][$size] < $qty) return ['err' => $p['name'] . ' EU ' . $size . ': only ' . max(0, $p['variants'][$size]) . ' in stock.'];
+        $items[] = ['slug' => (string) $slug, 'sku' => $p['sku'], 'product' => $p['name'], 'size' => $size, 'qty' => $qty, 'price' => (int) $p['price'], 'cost' => (int) $p['cost']];
+        $sub += $qty * (int) $p['price']; $cost += $qty * (int) $p['cost'];
+    }
+    if (mb_strlen($name) < 2 || $phone === '' || $district === '' || mb_strlen($address) < 5 || !$items) return ['err' => 'Name, a valid 11-digit mobile number, district, address and at least one product are required.'];
+    $oid = 'BG' . strtoupper(substr(base_convert((string) (int) (microtime(true) * 1000), 10, 36), -7));
+    $delivery = (int) setting($areaKey === 'dhaka' ? 'delivery_dhaka' : 'delivery_outside'); $tr['event_id'] = 'purchase_' . $oid;
+    $pdo->beginTransaction();
+    $take = $pdo->prepare('UPDATE variants SET stock = stock - ? WHERE product_id = ? AND size = ? AND stock >= ?');
+    foreach ($items as $i) { $p = $cat[$i['slug']]; if (!$p['track']) continue; $take->execute([$i['qty'], $p['id'], $i['size'], $i['qty']]); if ($take->rowCount() !== 1) { $pdo->rollBack(); return ['err' => $p['name'] . ' EU ' . $i['size'] . ' just sold out.']; } }
+    $pdo->prepare('INSERT INTO orders (id, created_at, status, source, name, phone, email, district, address, area, subtotal, delivery, total, items, tracking, ip, user_agent, note, cost, stock_held, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)')
+        ->execute([$oid, now(), $status, $source, $name, '+' . $phone, $email, $district, $address, $areaKey === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka', $sub, $delivery, $sub + $delivery,
+            json_encode($items, JSON_UNESCAPED_UNICODE), json_encode($tr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $ip, '', $note, $cost, $by]);
+    $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note, by_user) VALUES (?,?,?,?,?)')->execute([$oid, now(), $status, $logNote, $by]);
+    $pdo->prepare('DELETE FROM leads WHERE phone = ?')->execute(['+' . $phone]);
+    $pdo->commit();
+    return ['id' => $oid];
+}
 
 /* ---------------- actions (POST) ---------------- */
 if ($isPost) {
@@ -64,7 +104,7 @@ if ($isPost) {
             $cur = $pdo->prepare('SELECT status FROM orders WHERE id = ?'); $cur->execute([$id]); $was = $cur->fetchColumn();
             if ($was !== false && ($was !== $st || $note !== '')) {
                 $pdo->prepare('UPDATE orders SET status = ? WHERE id = ?')->execute([$st, $id]);
-                $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note) VALUES (?,?,?,?)')->execute([$id, now(), $st, $note]);
+                $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note, by_user) VALUES (?,?,?,?,' . $pdo->quote($me['name']) . ')')->execute([$id, now(), $st, $note]);
                 order_stock_sync($pdo, $id, $st);
                 flash('Order #' . $id . ' is now ' . BG_STATUSES[$st] . '.');
             }
@@ -86,7 +126,7 @@ if ($isPost) {
                 $cur->execute([$id]); $was = $cur->fetchColumn();
                 if ($was === false || $was === $s) continue;
                 $pdo->prepare('UPDATE orders SET status = ? WHERE id = ?')->execute([$s, $id]);
-                $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note) VALUES (?,?,?,?)')->execute([$id, now(), $s, 'Bulk update']); order_stock_sync($pdo, $id, $s); $n++;
+                $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note, by_user) VALUES (?,?,?,?,' . $pdo->quote($me['name']) . ')')->execute([$id, now(), $s, 'Bulk update']); order_stock_sync($pdo, $id, $s); $n++;
             }
             flash($n . ' order' . ($n === 1 ? '' : 's') . ' marked as ' . BG_STATUSES[$s] . '.');
         }
@@ -101,30 +141,39 @@ if ($isPost) {
     if ($act === 'lead_convert') {
         $lid = (int) $_POST['id']; $ls = $pdo->prepare('SELECT * FROM leads WHERE id = ?'); $ls->execute([$lid]); $lead = $ls->fetch();
         if (!$lead) { flash('This incomplete order no longer exists.'); go('p=leads'); }
-        $name = mb_substr(trim((string) $_POST['name']), 0, 120); $phone = bd_phone((string) $_POST['phone']); $district = mb_substr(trim((string) $_POST['district']), 0, 60); $address = mb_substr(trim((string) $_POST['address']), 0, 600);
-        $areaKey = ($_POST['area'] ?? '') === 'dhaka' ? 'dhaka' : 'outside'; $cat = products(true); $items = []; $sub = 0; $cost = 0; $err = '';
-        foreach ((array) ($_POST['it_slug'] ?? []) as $n => $slug) {
-            $size = (int) ($_POST['it_size'][$n] ?? 0); $qty = max(1, min(10, (int) ($_POST['it_qty'][$n] ?? 1))); $p = $cat[(string) $slug] ?? null;
-            if (!$p || !isset($p['variants'][$size])) { $err = 'Choose a size that exists for each product.'; break; }
-            if ($p['track'] && $p['variants'][$size] < $qty) { $err = $p['name'] . ' EU ' . $size . ': only ' . max(0, $p['variants'][$size]) . ' in stock.'; break; }
-            $items[] = ['slug' => (string) $slug, 'sku' => $p['sku'], 'product' => $p['name'], 'size' => $size, 'qty' => $qty, 'price' => (int) $p['price'], 'cost' => (int) $p['cost']];
-            $sub += $qty * (int) $p['price']; $cost += $qty * (int) $p['cost'];
-        }
-        if (!$err && (mb_strlen($name) < 2 || $phone === '' || $district === '' || mb_strlen($address) < 5 || !$items)) $err = 'Name, a valid 11-digit mobile number, district, address and at least one product are required.';
-        if ($err) { flash('Not confirmed: ' . $err); go('p=lead&id=' . $lid); }
-        $oid = 'BG' . strtoupper(substr(base_convert((string) (int) (microtime(true) * 1000), 10, 36), -7));
-        $delivery = (int) setting($areaKey === 'dhaka' ? 'delivery_dhaka' : 'delivery_outside');
-        $tr = json_decode((string) $lead['tracking'], true) ?: []; $tr['event_id'] = 'purchase_' . $oid;
-        $pdo->beginTransaction();
-        $take = $pdo->prepare('UPDATE variants SET stock = stock - ? WHERE product_id = ? AND size = ? AND stock >= ?');
-        foreach ($items as $i) { $p = $cat[$i['slug']]; if (!$p['track']) continue; $take->execute([$i['qty'], $p['id'], $i['size'], $i['qty']]); if ($take->rowCount() !== 1) { $pdo->rollBack(); flash('Not confirmed: ' . $p['name'] . ' EU ' . $i['size'] . ' just sold out.'); go('p=lead&id=' . $lid); } }
-        $pdo->prepare('INSERT INTO orders (id, created_at, status, source, name, phone, email, district, address, area, subtotal, delivery, total, items, tracking, ip, user_agent, note, cost, stock_held) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)')
-            ->execute([$oid, now(), 'confirmed', $lead['source'], $name, '+' . $phone, $lead['email'], $district, $address, $areaKey === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka', $sub, $delivery, $sub + $delivery,
-                json_encode($items, JSON_UNESCAPED_UNICODE), json_encode($tr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $lead['ip'], '', 'Recovered from an incomplete order', $cost]);
-        $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note) VALUES (?,?,?,?)')->execute([$oid, now(), 'confirmed', 'Created from an incomplete order (confirmed by phone)']);
-        $pdo->prepare('DELETE FROM leads WHERE id = ? OR phone = ?')->execute([$lid, '+' . $phone]);
-        $pdo->commit();
-        flash('Order #' . $oid . ' created and confirmed.'); go('p=order&id=' . $oid);
+        $res = make_order($pdo, $_POST, (string) $lead['source'], 'confirmed', json_decode((string) $lead['tracking'], true) ?: [], (string) $lead['email'], (string) $lead['ip'], 'Recovered from an incomplete order', 'Created from an incomplete order (confirmed by phone)', $me['name']);
+        if (isset($res['err'])) { flash('Not confirmed: ' . $res['err']); go('p=lead&id=' . $lid); }
+        $pdo->prepare('DELETE FROM leads WHERE id = ?')->execute([$lid]);
+        flash('Order #' . $res['id'] . ' created and confirmed.'); go('p=order&id=' . $res['id']);
+    }
+    if ($act === 'neworder') {
+        $channels = ['phone' => 'phone call', 'messenger' => 'facebook inbox', 'whatsapp' => 'whatsapp', 'instagram' => 'instagram inbox', 'shop' => 'walk-in / other'];
+        $ch = $channels[$_POST['channel'] ?? ''] ?? 'phone call'; $status = ($_POST['status'] ?? '') === 'pending' ? 'pending' : 'confirmed';
+        $res = make_order($pdo, $_POST, 'manual', $status, ['utm_source' => $ch, 'utm_medium' => 'manual'], '', '', mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 2000), 'Order entered by staff (' . $ch . ')', $me['name']);
+        if (isset($res['err'])) { $_SESSION['neworder'] = $_POST; flash('Not saved: ' . $res['err']); go('p=neworder'); }
+        unset($_SESSION['neworder']); flash('Order #' . $res['id'] . ' created.'); go('p=order&id=' . $res['id']);
+    }
+    if ($act === 'spend_add') {
+        $day = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_POST['day'] ?? '')) ? (string) $_POST['day'] : date('Y-m-d'); $camp = mb_substr(trim((string) ($_POST['campaign'] ?? '')), 0, 190); $amt = (int) ($_POST['amount'] ?? 0);
+        if ($camp === '' || $amt < 1) flash('Not saved: write the campaign name and an amount.');
+        else { $pdo->prepare('INSERT INTO ad_spend (day, campaign, amount, note) VALUES (?,?,?,?)')->execute([$day, $camp, $amt, mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200)]); flash('Ad spend saved.'); }
+        go('p=utm');
+    }
+    if ($act === 'spend_delete') { $pdo->prepare('DELETE FROM ad_spend WHERE id = ?')->execute([(int) $_POST['id']]); flash('Ad spend entry deleted.'); go('p=utm'); }
+    if ($act === 'user_add') {
+        $un = strtolower(trim((string) ($_POST['username'] ?? ''))); $pw = (string) ($_POST['password'] ?? ''); $nm = mb_substr(trim((string) ($_POST['name'] ?? '')), 0, 80);
+        $ex = $pdo->prepare('SELECT COUNT(*) FROM users WHERE username = ?'); $ex->execute([$un]);
+        if (!$validUser($un)) flash('Not added: username needs 3-40 small letters, numbers, dot, dash or underscore.');
+        elseif ((int) $ex->fetchColumn()) flash('Not added: that username already exists.');
+        elseif ($nm === '' || strlen($pw) < 10) flash('Not added: give a name and a password of 10+ characters.');
+        else { $pdo->prepare('INSERT INTO users (username, name, pass_hash, role, active, created_at) VALUES (?,?,?,?,1,?)')->execute([$un, $nm, password_hash($pw, PASSWORD_DEFAULT), ($_POST['role'] ?? '') === 'admin' ? 'admin' : 'staff', now()]); flash('Account "' . $un . '" added.'); }
+        go('p=settings');
+    }
+    if ($act === 'user_toggle' || $act === 'user_pass') {
+        $uid = (int) $_POST['id'];
+        if ($act === 'user_toggle') { if ($uid === (int) $me['id']) flash('You cannot switch off your own account.'); else { $pdo->prepare('UPDATE users SET active = 1 - active WHERE id = ?')->execute([$uid]); flash('Account updated.'); } }
+        else { $pw = (string) ($_POST['password'] ?? ''); if (strlen($pw) < 10) flash('Password must be 10+ characters.'); else { $pdo->prepare('UPDATE users SET pass_hash = ? WHERE id = ?')->execute([password_hash($pw, PASSWORD_DEFAULT), $uid]); flash('Password reset.'); } }
+        go('p=settings');
     }
     if ($act === 'note') {
         $pdo->prepare('UPDATE orders SET note = ? WHERE id = ?')->execute([mb_substr(trim((string) $_POST['note']), 0, 2000), (string) $_POST['id']]);
@@ -201,10 +250,10 @@ if ($isPost) {
     }
     if ($act === 'password') {
         $pw = (string) $_POST['password'];
-        if (!password_verify((string) $_POST['current'], $hash)) flash('Current password is wrong.');
+        if (!password_verify((string) $_POST['current'], $me['pass_hash'])) flash('Current password is wrong.');
         elseif (strlen($pw) < 10 || $pw !== $_POST['password2']) flash('New password must be 10+ characters and typed the same twice.');
-        else { set_setting('admin_hash', password_hash($pw, PASSWORD_DEFAULT)); flash('Password changed.'); }
-        go('p=settings');
+        else { $pdo->prepare('UPDATE users SET pass_hash = ? WHERE id = ?')->execute([password_hash($pw, PASSWORD_DEFAULT), $me['id']]); flash('Password changed.'); }
+        go($isAdmin ? 'p=settings' : 'p=account');
     }
     go();
 }
@@ -225,20 +274,20 @@ if ($page === 'export') {
 if ($page === 'backup') {
     header('Content-Type: application/json; charset=utf-8'); header('Content-Disposition: attachment; filename="babyglee-backup-' . date('Y-m-d-His') . '.json"');
     $settings = []; foreach ($pdo->query('SELECT k, v FROM settings') as $r) if (!in_array($r['k'], ['admin_hash', 'meta_capi_token'], true)) $settings[$r['k']] = $r['v'];
-    echo json_encode(['created_at' => now(), 'note' => 'Babyglee backup. Passwords and API tokens are not included.', 'settings' => $settings, 'variants' => $pdo->query('SELECT * FROM variants')->fetchAll(), 'leads' => $pdo->query('SELECT * FROM leads')->fetchAll(),
+    echo json_encode(['created_at' => now(), 'note' => 'Babyglee backup. Passwords and API tokens are not included.', 'settings' => $settings, 'variants' => $pdo->query('SELECT * FROM variants')->fetchAll(), 'leads' => $pdo->query('SELECT * FROM leads')->fetchAll(), 'ad_spend' => $pdo->query('SELECT * FROM ad_spend')->fetchAll(),
         'products' => $pdo->query('SELECT * FROM products')->fetchAll(), 'orders' => $pdo->query('SELECT * FROM orders')->fetchAll(), 'order_log' => $pdo->query('SELECT * FROM order_log')->fetchAll()], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     exit;
 }
 
 /* ---------------- pages ---------------- */
 function page_head(string $title, bool $nav = true): void {
-    global $page, $csrf;
+    global $page, $csrf, $me, $isAdmin;
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>' . h($title) . ' — Babyglee admin</title><link rel="stylesheet" href="admin.css"></head><body>';
     if ($nav) {
-        $links = ['dashboard' => 'Dashboard', 'orders' => 'Orders', 'leads' => 'Incomplete', 'utm' => 'Ads', 'products' => 'Products', 'settings' => 'Settings'];
+        $links = ['dashboard' => 'Dashboard', 'orders' => 'Orders', 'leads' => 'Incomplete'] + ($isAdmin ? ['utm' => 'Ads', 'products' => 'Products', 'settings' => 'Settings'] : []);
         echo '<header class="top"><a class="logo" href="index.php">Babyglee <span>admin</span></a><nav>';
-        foreach ($links as $k => $l) echo '<a href="index.php?p=' . $k . '"' . (($page === $k || ($k === 'orders' && $page === 'order') || ($k === 'products' && $page === 'product') || ($k === 'leads' && $page === 'lead')) ? ' class="on"' : '') . '>' . $l . '</a>';
-        echo '</nav><form method="post" action="index.php?p=logout">' . $csrf . '<button class="link">Log out</button></form></header>';
+        foreach ($links as $k => $l) echo '<a href="index.php?p=' . $k . '"' . (($page === $k || ($k === 'orders' && ($page === 'order' || $page === 'neworder')) || ($k === 'products' && $page === 'product') || ($k === 'leads' && $page === 'lead')) ? ' class="on"' : '') . '>' . $l . '</a>';
+        echo '</nav><form method="post" action="index.php?p=logout"><a class="who" href="index.php?p=' . ($isAdmin ? 'settings' : 'account') . '">' . h($me['name']) . '</a>' . $csrf . '<button class="link">Log out</button></form></header>';
         if ($f = flash()) echo '<p class="flash" role="status">' . h($f) . '</p>';
     }
     echo '<main class="wrap">';
@@ -302,24 +351,66 @@ if ($page === 'utm') {
         }
         unset($x);
     }
+    $since = date('Y-m-d', strtotime('-' . ($days - 1) . ' days')); $blank = ['n' => 0, 'pending' => 0, 'confirmed' => 0, 'delivered' => 0, 'bad' => 0, 'value' => 0, 'profit' => 0];
+    $spendRows = []; $tot['spend'] = 0;
+    if ($by === 'campaign') {
+        $sp = $pdo->prepare('SELECT * FROM ad_spend WHERE day >= ? ORDER BY day DESC, id DESC'); $sp->execute([$since]); $spendRows = $sp->fetchAll();
+        foreach ($spendRows as $r) { $g[$r['campaign']] = $g[$r['campaign']] ?? $blank; $g[$r['campaign']]['spend'] = ($g[$r['campaign']]['spend'] ?? 0) + (int) $r['amount']; $tot['spend'] += (int) $r['amount']; }
+    }
+    $withSpend = $by === 'campaign';
     uasort($g, fn($a, $b) => $b['n'] <=> $a['n']);
-    $row = function (string $label, array $x, bool $foot = false): string {
+    $row = function (string $label, array $x, bool $foot = false) use ($withSpend): string {
+        $sp = (int) ($x['spend'] ?? 0); $extra = '';
+        if ($withSpend) $extra = '<td>' . ($sp ? taka($sp) : '—') . '</td><td>' . ($sp && $x['n'] ? taka($sp / $x['n']) : '—') . '</td><td>' . ($sp ? number_format($x['value'] / $sp, 2) . '×' : '—') . '</td><td' . ($sp ? ($x['profit'] - $sp < 0 ? ' class="hot"' : ' class="good"') : '') . '>' . ($sp ? taka($x['profit'] - $sp) : '—') . '</td>';
         $rate = $x['n'] ? round($x['bad'] / $x['n'] * 100) : 0;
         $cls = $x['n'] >= 5 ? ($rate >= 40 ? ' class="hot"' : ($rate <= 15 ? ' class="good"' : '')) : '';
-        return '<tr' . ($foot ? ' class="tot"' : '') . '><td class="nm">' . h($label) . '</td><td>' . $x['n'] . '</td><td>' . $x['pending'] . '</td><td>' . $x['confirmed'] . '</td><td>' . $x['delivered'] . '</td><td>' . $x['bad'] . '</td><td' . $cls . '>' . $rate . '%</td><td>' . taka($x['value']) . '</td><td>' . taka($x['profit']) . '</td></tr>';
+        return '<tr' . ($foot ? ' class="tot"' : '') . '><td class="nm">' . h($label) . '</td><td>' . $x['n'] . '</td><td>' . $x['pending'] . '</td><td>' . $x['confirmed'] . '</td><td>' . $x['delivered'] . '</td><td>' . $x['bad'] . '</td><td' . $cls . '>' . $rate . '%</td><td>' . taka($x['value']) . '</td><td>' . taka($x['profit']) . '</td>' . $extra . '</tr>';
     };
     page_head('Ads');
     echo '<div class="row"><h1>Ads &amp; UTM</h1><div class="tabs sm">';
     foreach ([7, 30, 90] as $d) echo '<a href="index.php?' . h(http_build_query(['p' => 'utm', 'by' => $by, 'days' => $d])) . '"' . ($days === $d ? ' class="on"' : '') . '>' . $d . ' days</a>';
     echo '</div></div><div class="tabs">';
     foreach ($dims as $k => $d) echo '<a href="index.php?' . h(http_build_query(['p' => 'utm', 'by' => $k, 'days' => $days])) . '"' . ($by === $k ? ' class="on"' : '') . '>' . $d[1] . '</a>';
-    echo '</div><section class="card"><div class="scroll"><table class="tbl utm"><thead><tr><th>' . $dims[$by][1] . '</th><th>Orders</th><th>Pending</th><th>Confirmed</th><th>Delivered</th><th>Cancelled</th><th>Cancel %</th><th>Delivered ৳</th><th>Est. profit</th></tr></thead><tbody>';
+    echo '</div><section class="card"><div class="scroll"><table class="tbl utm"><thead><tr><th>' . $dims[$by][1] . '</th><th>Orders</th><th>Pending</th><th>Confirmed</th><th>Delivered</th><th>Cancelled</th><th>Cancel %</th><th>Delivered ৳</th><th>Est. profit</th>' . ($withSpend ? '<th>Ad spend</th><th>Cost / order</th><th>ROAS</th><th>Net after ads</th>' : '') . '</tr></thead><tbody>';
     if (!$g) echo '<tr><td colspan="9" class="mut">No orders in this period.</td></tr>';
     foreach ($g as $label => $x) echo $row((string) $label, $x);
     if ($g) echo $row('Total', $tot, true);
     echo '</tbody></table></div><p class="mut">Confirmed = confirmed or shipped. Cancelled = cancelled or returned. Cancel % is coloured when there are 5+ orders: red at 40% or more (many fake orders), green at 15% or less. Est. profit = product price minus purchase price for orders that are not cancelled; delivery charge and ad spend are not included.</p></section>
+' . ($withSpend ? '<section class="card"><h2>Ad spend</h2><p class="mut">Type what you spent on each campaign (in taka), so the table shows cost per order, ROAS (delivered value ÷ ad spend) and what is left after ads. Use exactly the same campaign name as in the table.</p>
+      <form method="post" class="spend">' . $csrf . '<input type="hidden" name="act" value="spend_add"><label>Date<input type="date" name="day" value="' . date('Y-m-d') . '" required></label><label>Campaign<input name="campaign" list="camps" required maxlength="190"></label><label>Amount (৳)<input type="number" name="amount" min="1" inputmode="numeric" required></label><button class="btn sm">Add</button>
+      <datalist id="camps">' . implode('', array_map(fn($c) => '<option value="' . h($c) . '">', array_filter(array_keys($g), fn($c) => $c[0] !== '('))) . '</datalist></form>'
+      . ($spendRows ? '<table class="tbl small">' . implode('', array_map(fn($r) => '<tr><td>' . h(date('d M', strtotime($r['day']))) . '</td><td>' . h($r['campaign']) . '</td><td class="r">' . taka($r['amount']) . '</td><td class="r"><form method="post">' . $csrf . '<input type="hidden" name="act" value="spend_delete"><input type="hidden" name="id" value="' . (int) $r['id'] . '"><button class="link">Delete</button></form></td></tr>', $spendRows)) . '</table>' : '') . '</section>' : '') . '
     <section class="card"><h2>How to tag your ads</h2><p class="mut">In Meta Ads Manager, open the ad → <b>Tracking</b> → <b>URL parameters</b> and paste this. Meta fills in the names automatically, so every order shows its campaign, ad set and ad here.</p>
     <p><code class="blk">utm_source=facebook&amp;utm_medium=paid&amp;utm_campaign={{campaign.name}}&amp;utm_term={{adset.name}}&amp;utm_content={{ad.name}}</code></p></section>';
+    page_foot(); exit;
+}
+
+
+if ($page === 'account') {
+    page_head('My account');
+    echo '<h1>My account</h1><p class="mut">Signed in as <b>' . h($me['username']) . '</b> (' . h($me['role']) . ').</p><form method="post" class="card form">' . $csrf . '<input type="hidden" name="act" value="password"><h2>Change password</h2><label>Current password<input type="password" name="current" required autocomplete="current-password"></label><label>New password (10+ characters)<input type="password" name="password" required minlength="10" autocomplete="new-password"></label><label>Repeat new password<input type="password" name="password2" required autocomplete="new-password"></label><button class="btn">Change password</button></form>';
+    page_foot(); exit;
+}
+
+/* ---------------- manual order: for orders taken by phone, inbox or WhatsApp ---------------- */
+if ($page === 'neworder') {
+    $v = $_SESSION['neworder'] ?? []; unset($_SESSION['neworder']); $cat = products(true);
+    $prow = function ($slug, $size, $qty) use ($cat) {
+        $o = '<div class="vrow"><label>Product<select name="it_slug[]">';
+        foreach ($cat as $sl => $p) $o .= '<option value="' . h($sl) . '"' . ($sl === $slug ? ' selected' : '') . '>' . h(preg_replace('/^Babyglee\s+/u', '', $p['name'])) . ' · ' . taka($p['price']) . '</option>';
+        return $o . '</select></label><label>Size (EU)<input type="number" name="it_size[]" min="10" max="60" inputmode="numeric" required value="' . h($size) . '"></label><label>Qty<input type="number" name="it_qty[]" min="1" max="10" inputmode="numeric" value="' . h($qty) . '"></label></div>';
+    };
+    $rows = ''; foreach ((array) ($v['it_slug'] ?? [(string) array_key_first($cat)]) as $n => $sl) $rows .= $prow((string) $sl, $v['it_size'][$n] ?? '', $v['it_qty'][$n] ?? 1);
+    page_head('New order');
+    echo '<p><a href="index.php?p=orders">← Orders</a></p><h1>New order</h1><p class="mut">For orders taken by phone, Facebook inbox or WhatsApp. Price and delivery charge are calculated automatically; stock is updated.</p>
+      <form method="post" class="card form">' . $csrf . '<input type="hidden" name="act" value="neworder">
+      <div class="f2"><label>Customer name<input name="name" required maxlength="120" value="' . h($v['name'] ?? '') . '"></label><label>Mobile number (11 digits)<input name="phone" required inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX" value="' . h($v['phone'] ?? '') . '"></label></div>
+      <div class="f2"><label>District<input name="district" required maxlength="60" value="' . h($v['district'] ?? '') . '"></label><label>Delivery area<select name="area"><option value="dhaka"' . (($v['area'] ?? '') === 'dhaka' ? ' selected' : '') . '>Inside Dhaka · ' . taka(setting('delivery_dhaka')) . '</option><option value="outside"' . (($v['area'] ?? 'outside') === 'outside' ? ' selected' : '') . '>Outside Dhaka · ' . taka(setting('delivery_outside')) . '</option></select></label></div>
+      <label>Full address<textarea name="address" rows="2" required maxlength="600">' . h($v['address'] ?? '') . '</textarea></label>
+      <fieldset><legend>Products</legend><div id="prows">' . $rows . '</div><template id="ptpl">' . $prow('', '', 1) . '</template><button type="button" class="btn sm ghost" onclick="document.getElementById(\'prows\').appendChild(document.getElementById(\'ptpl\').content.cloneNode(true))">+ Add another product</button></fieldset>
+      <div class="f2"><label>Order came from<select name="channel">' . implode('', array_map(fn($k, $l) => '<option value="' . $k . '"' . (($v['channel'] ?? 'phone') === $k ? ' selected' : '') . '>' . $l . '</option>', ['phone', 'messenger', 'whatsapp', 'instagram', 'shop'], ['Phone call', 'Facebook inbox', 'WhatsApp', 'Instagram inbox', 'Walk-in / other'])) . '</select></label>
+      <label>Save as<select name="status"><option value="confirmed">Confirmed</option><option value="pending"' . (($v['status'] ?? '') === 'pending' ? ' selected' : '') . '>Pending</option></select></label></div>
+      <label>Note (optional)<input name="note" maxlength="500" value="' . h($v['note'] ?? '') . '"></label><button class="btn">Create order</button></form>';
     page_foot(); exit;
 }
 
@@ -379,7 +470,7 @@ if ($page === 'orders') {
     $st = $pdo->prepare('SELECT * FROM orders' . $w . ' ORDER BY created_at DESC LIMIT ' . $per . ' OFFSET ' . (($pg - 1) * $per)); $st->execute($args); $rows = $st->fetchAll();
     $counts = []; foreach ($pdo->query('SELECT status, COUNT(*) c FROM orders GROUP BY status') as $r) $counts[$r['status']] = (int) $r['c'];
     page_head('Orders');
-    echo '<div class="row"><h1>Orders</h1><a class="btn ghost" href="index.php?p=export">Download CSV</a></div><div class="tabs"><a href="index.php?p=orders"' . ($status === '' ? ' class="on"' : '') . '>All <b>' . array_sum($counts) . '</b></a>';
+    echo '<div class="row"><h1>Orders</h1><div class="acts"><a class="btn" href="index.php?p=neworder">+ New order</a>' . ($isAdmin ? '<a class="btn ghost" href="index.php?p=export">Download CSV</a>' : '') . '</div></div><div class="tabs"><a href="index.php?p=orders"' . ($status === '' ? ' class="on"' : '') . '>All <b>' . array_sum($counts) . '</b></a>';
     foreach (BG_STATUSES as $k => $l) echo '<a href="index.php?p=orders&status=' . $k . '"' . ($status === $k ? ' class="on"' : '') . '>' . $l . ' <b>' . ($counts[$k] ?? 0) . '</b></a>';
     echo '</div><form class="search" method="get"><input type="hidden" name="p" value="orders"><input type="hidden" name="status" value="' . h($status) . '"><input name="q" value="' . h($q) . '" placeholder="Search order ID, phone or name" inputmode="search"><button class="btn">Search</button></form>';
     $hist = [];
@@ -415,6 +506,7 @@ if ($page === 'order') {
     $hs = $pdo->prepare("SELECT COUNT(*) c, SUM(CASE WHEN status IN ('cancelled','returned') THEN 1 ELSE 0 END) x, SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) d FROM orders WHERE phone = ? AND id <> ?"); $hs->execute([$o['phone'], $o['id']]); $hx = $hs->fetch();
     $histLine = (int) $hx['c'] ? '<p class="hist' . ((int) $hx['x'] ? ' bad' : '') . '">Earlier orders from this number: <b>' . (int) $hx['c'] . '</b> (' . (int) $hx['d'] . ' delivered, ' . (int) $hx['x'] . ' cancelled / returned) · <a href="index.php?p=orders&q=' . rawurlencode($o['phone']) . '">see all</a></p>' : '<p class="hist">First order from this number.</p>';
     $profitLine = (int) $o['cost'] > 0 ? '<p class="mut">Purchase cost ' . taka($o['cost']) . ' · estimated profit <b>' . taka((int) $o['subtotal'] - (int) $o['cost']) . '</b> (before delivery and ad cost)</p>' : '<p class="mut">Add a purchase price to the products to see profit here.</p>';
+    if (!$isAdmin) $profitLine = '';
     $wa = 'https://wa.me/' . preg_replace('/\D/', '', $o['phone']) . '?text=' . rawurlencode('Hello ' . $o['name'] . ', this is Babyglee about your order #' . $o['id'] . '.');
     echo '<p><a href="index.php?p=orders">← Orders</a></p><div class="row"><h1>Order #' . h($o['id']) . '</h1>' . badge($o['status']) . '</div><div class="acts top-acts"><a class="btn sm" href="index.php?p=print&type=invoice&ids=' . h($o['id']) . '" target="_blank" rel="noopener">Print invoice (A4)</a><a class="btn sm ghost" href="index.php?p=print&type=sticker&ids=' . h($o['id']) . '" target="_blank" rel="noopener">Print sticker (3×4)</a></div><p class="mut">' . h(date('d M Y, h:i A', strtotime($o['created_at']))) . ' · from ' . h($o['source']) . ' page · ' . h($o['payment']) . '</p>
     <div class="grid2"><section class="card"><h2>Customer</h2><p><b>' . h($o['name']) . '</b><br>' . h($o['phone']) . ($o['email'] ? '<br>' . h($o['email']) : '') . '</p><p>' . nl2br(h($o['address'])) . '<br>' . h($o['district']) . ' · ' . h($o['area']) . '</p>
@@ -426,7 +518,7 @@ if ($page === 'order') {
     foreach (BG_STATUSES as $k => $l) echo '<option value="' . $k . '"' . ($o['status'] === $k ? ' selected' : '') . '>' . $l . '</option>';
     echo '</select></label><label>Comment (optional)<input name="note" maxlength="500" placeholder="e.g. confirmed by phone, size 28"></label><button class="btn">Update status</button></form>
       <h3>History</h3><ul class="log">';
-    foreach ($log as $l) echo '<li>' . badge($l['status']) . ' <time>' . h(date('d M, h:i A', strtotime($l['created_at']))) . '</time>' . ($l['note'] ? '<br><span class="mut">' . h($l['note']) . '</span>' : '') . '</li>';
+    foreach ($log as $l) echo '<li>' . badge($l['status']) . ' <time>' . h(date('d M, h:i A', strtotime($l['created_at']))) . '</time>' . (($l['by_user'] ?? '') !== '' ? ' <span class="mut">by ' . h($l['by_user']) . '</span>' : '') . ($l['note'] ? '<br><span class="mut">' . h($l['note']) . '</span>' : '') . '</li>';
     echo '</ul></section><section class="card"><h2>Internal note</h2><form method="post">' . $csrf . '<input type="hidden" name="act" value="note"><input type="hidden" name="id" value="' . h($o['id']) . '"><textarea name="note" rows="4" maxlength="2000">' . h($o['note']) . '</textarea><button class="btn">Save note</button></form>
       <h3>Courier</h3><form method="post">' . $csrf . '<input type="hidden" name="act" value="ship"><input type="hidden" name="id" value="' . h($o['id']) . '"><div class="f2"><label>Courier<input name="courier" maxlength="60" list="couriers" value="' . h($o['courier']) . '" placeholder="e.g. Pathao"></label><label>Tracking / consignment ID<input name="tracking_code" maxlength="80" value="' . h($o['tracking_code']) . '"></label></div><datalist id="couriers"><option value="Pathao"><option value="Steadfast"><option value="RedX"><option value="Sundarban"><option value="eCourier"><option value="Paperfly"></datalist><button class="btn sm">Save courier</button></form>
       <h3>Where it came from</h3><table class="tbl small">';
@@ -489,6 +581,10 @@ if ($page === 'settings') {
       <label>Test event code (only while testing in Events Manager)<input name="meta_test_code" value="' . $s('meta_test_code') . '" placeholder="TEST12345"></label>
       <button class="btn">Save settings</button></form>
     <div class="grid2"><form method="post" class="card form">' . $csrf . '<input type="hidden" name="act" value="password"><h2>Change password</h2><label>Current password<input type="password" name="current" required autocomplete="current-password"></label><label>New password (10+ characters)<input type="password" name="password" required minlength="10" autocomplete="new-password"></label><label>Repeat new password<input type="password" name="password2" required autocomplete="new-password"></label><button class="btn">Change password</button></form>
+    <section class="card"><h2>Staff accounts</h2><p class="mut">Each person gets their own login. <b>Staff</b> can only work on orders and incomplete orders. <b>Admin</b> can also see products, prices, profit, ads and settings. Every status change records who did it.</p><table class="tbl small">'
+      . implode('', array_map(fn($u) => '<tr><td><b>' . h($u['name']) . '</b><br><span class="mut">' . h($u['username']) . ' · ' . h($u['role']) . ($u['active'] ? '' : ' · switched off') . '</span></td><td class="r"><form method="post" class="inl">' . $csrf . '<input type="hidden" name="id" value="' . (int) $u['id'] . '"><input type="password" name="password" placeholder="new password" minlength="10" autocomplete="new-password" aria-label="New password for ' . h($u['username']) . '"><button class="btn sm ghost" name="act" value="user_pass">Reset</button>' . ((int) $u['id'] === (int) $me['id'] ? '' : '<button class="btn sm ghost" name="act" value="user_toggle" formnovalidate>' . ($u['active'] ? 'Switch off' : 'Switch on') . '</button>') . '</form></td></tr>', $pdo->query('SELECT * FROM users ORDER BY id')->fetchAll())) . '</table>
+      <form method="post" class="form">' . $csrf . '<input type="hidden" name="act" value="user_add"><h3>Add an account</h3><div class="f2"><label>Name<input name="name" required maxlength="80"></label><label>Username<input name="username" required autocapitalize="none" maxlength="40"></label></div>
+      <div class="f2"><label>Password (10+ characters)<input type="password" name="password" required minlength="10" autocomplete="new-password"></label><label>Role<select name="role"><option value="staff">Staff (orders only)</option><option value="admin">Admin (everything)</option></select></label></div><button class="btn sm">Add account</button></form></section>
     <section class="card"><h2>Backup</h2><p class="mut">Download a copy of all orders, products and settings. Do this regularly and keep the file safe: it contains customer details. Passwords and API tokens are not included.</p><div class="acts"><a class="btn" href="index.php?p=backup">Download backup (JSON)</a><a class="btn ghost" href="index.php?p=export">Orders as CSV</a></div></section></div>';
     page_foot(); exit;
 }
@@ -516,7 +612,7 @@ foreach ($rows as $o) {
     }
     $t = json_decode((string) $o['tracking'], true) ?: [];
     $src = $t['utm_source'] ?? (!empty($t['fbclid']) ? 'facebook (click id)' : (!empty($t['gclid']) ? 'google (click id)' : 'direct / unknown'));
-    foreach ([[&$bySource, $o['source'] === 'landing' ? 'Landing pages' : 'Store'], [&$byDistrict, $o['district'] ?: 'Unknown'], [&$byUtm, $src]] as $pair) {
+    foreach ([[&$bySource, ['landing' => 'Landing pages', 'manual' => 'Manual (phone / inbox)'][$o['source']] ?? 'Store'], [&$byDistrict, $o['district'] ?: 'Unknown'], [&$byUtm, $src]] as $pair) {
         $pair[0][$pair[1]] = ($pair[0][$pair[1]] ?? ['n' => 0, 'v' => 0]); $pair[0][$pair[1]]['n']++; $pair[0][$pair[1]]['v'] += (int) $o['total'];
     }
 }
@@ -527,6 +623,12 @@ function bars(array $data, bool $money = true, int $limit = 8): string {
     $max = max(array_map(fn($x) => is_array($x) ? $x['n'] : $x, $data)) ?: 1; $out = '<ul class="bars">';
     foreach ($data as $label => $x) { $n = is_array($x) ? $x['n'] : $x; $out .= '<li><span class="bl">' . h($label) . '</span><span class="bt"><i style="width:' . round($n / $max * 100) . '%"></i></span><span class="bn">' . $n . ($money && is_array($x) ? ' · ' . taka($x['v']) : '') . '</span></li>'; }
     return $out . '</ul>';
+}
+$staffCard = '';
+if ($isAdmin) {
+    $sq = $pdo->prepare("SELECT by_user, status, COUNT(*) c FROM order_log WHERE created_at >= ? AND by_user <> '' AND status IN ('confirmed','cancelled') GROUP BY by_user, status"); $sq->execute([$since]);
+    $conf = []; $canc = []; foreach ($sq as $r) { if ($r['status'] === 'confirmed') $conf[$r['by_user']] = (int) $r['c']; else $canc[$r['by_user']] = (int) $r['c']; }
+    if ($conf || $canc) $staffCard = '<div class="grid2"><section class="card"><h2>Confirmed by staff</h2>' . bars($conf, false) . '</section><section class="card"><h2>Cancelled by staff</h2>' . bars($canc, false) . '</section></div>';
 }
 page_head('Dashboard');
 echo '<div class="row"><h1>Dashboard</h1><div class="tabs sm">';
@@ -543,8 +645,8 @@ echo '<div class="kpis"><div class="card kpi"><span>Today</span><b>' . $k['today
   <div class="card kpi"><span>Orders (' . $days . 'd)</span><b>' . $valid . '</b><small>' . $k['cancelled'] . ' cancelled / returned</small></div>
   <div class="card kpi"><span>Order value</span><b>' . taka($k['value']) . '</b><small>avg ' . taka($valid ? $k['value'] / $valid : 0) . '</small></div>
   <div class="card kpi"><span>Delivered</span><b>' . $k['delivered'] . '</b><small>' . taka($k['delivered_value']) . ' collected</small></div>
-  <div class="card kpi"><span>Pairs sold</span><b>' . $k['pairs'] . '</b><small>' . ($k['orders'] ? round($k['cancelled'] / $k['orders'] * 100) : 0) . '% cancel rate</small></div>
-  <div class="card kpi"><span>Est. profit</span><b>' . ($k['nocost'] === $valid && $valid ? '—' : taka($k['profit'])) . '</b><small>' . ($k['nocost'] ? '<a href="index.php?p=products">add purchase prices</a>' : 'before delivery &amp; ads') . '</small></div></div>';
+  <div class="card kpi"><span>Pairs sold</span><b>' . $k['pairs'] . '</b><small>' . ($k['orders'] ? round($k['cancelled'] / $k['orders'] * 100) : 0) . '% cancel rate</small></div>' . (!$isAdmin ? '' : '
+  <div class="card kpi"><span>Est. profit</span><b>' . ($k['nocost'] === $valid && $valid ? '—' : taka($k['profit'])) . '</b><small>' . ($k['nocost'] ? '<a href="index.php?p=products">add purchase prices</a>' : 'before delivery &amp; ads') . '</small></div>') . '</div>';
 $maxDay = max(array_map(fn($d) => $d['n'], $byDay)) ?: 1;
 echo '<section class="card"><h2>Orders per day</h2><div class="chart" role="img" aria-label="Orders per day for the last ' . $days . ' days">';
 foreach ($byDay as $d => $x) echo '<div class="col" title="' . h(date('d M', strtotime($d))) . ': ' . $x['n'] . ' orders, ' . taka($x['v']) . '"><i style="height:' . max(2, round($x['n'] / $maxDay * 100)) . '%"></i></div>';
@@ -552,5 +654,5 @@ echo '</div><div class="axis"><span>' . h(date('d M', strtotime(array_key_first(
 <div class="grid2"><section class="card"><h2>By status</h2>' . bars(array_combine(array_map(fn($s) => BG_STATUSES[$s] ?? $s, array_keys($byStatus)), $byStatus), false) . '</section><section class="card"><h2>Store vs landing pages</h2>' . bars($bySource) . '</section>
 <section class="card"><h2>Top products (pairs)</h2>' . bars($byProduct, false) . '</section><section class="card"><h2>Sizes sold</h2>' . bars($bySize, false, 16) . '</section>
 <section class="card"><h2>Traffic source</h2>' . bars($byUtm) . '</section><section class="card"><h2>Top districts</h2>' . bars($byDistrict) . '</section></div>
-<p class="mut">Numbers exclude cancelled and returned orders, except "By status". Order value includes delivery charges.</p>';
+' . $staffCard . '<p class="mut">Numbers exclude cancelled and returned orders, except "By status". Order value includes delivery charges.</p>';
 page_foot();

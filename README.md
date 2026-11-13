@@ -33,6 +33,17 @@ GitHub Pages: Settings → Pages → Deploy from branch → `main` / root.
 ## Changelog
 Newest first. Every change is recorded here (see `CLAUDE.md`).
 
+### 2026-11-14: staff logins, manual orders, ad spend and ROAS
+- **Backup first:** `backups/site-2026-11-14-before-staff-spend.zip`.
+- **Staff accounts** (Admin → Settings → Staff accounts): each person has their own username and password. *Staff* can only work on orders and incomplete orders (no products, prices, profit, ads, settings, CSV or backup); *Admin* sees everything. Accounts can be switched off or have their password reset; the owner cannot switch off their own account. Staff pages and actions are blocked on the server, not just hidden.
+- **Who did what:** every status change in the order history shows the name of the person; the admin dashboard shows confirmed and cancelled counts per staff member.
+- **Manual orders** (Orders → + New order): for orders taken by phone, Facebook inbox, WhatsApp or Instagram. Several products per order, price and delivery calculated automatically, stock updated, source recorded.
+- **Ad spend and ROAS** (Ads → Campaign view): enter daily spend per campaign; the table shows ad spend, cost per order, ROAS (delivered value ÷ spend) and net after ads (profit − spend), green or red.
+- **Existing admin password** is kept: it becomes the user `admin` (log in with username `admin`).
+- **Money format:** negative amounts now show as `-৳3,730`.
+- **Database:** upgrades itself to version 5 (new tables `users`, `ad_spend`; new columns `order_log.by_user`, `orders.created_by`).
+- Files: `admin/index.php`, `admin/admin.css`, `api/lib.php`, `docs/backend-setup.md`.
+
 ### 2026-11-14: size variations with stock, incomplete orders, Bangladesh phone field
 - **Backup first:** `backups/site-2026-11-14-before-variations.zip`.
 - **Size variations and stock** (Admin → product): one row per size with its own stock, add or remove any size (EU 10–60), and a "Count stock" switch per product.

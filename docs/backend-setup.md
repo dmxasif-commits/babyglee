@@ -17,7 +17,7 @@ It is part of the same folder as the website: upload everything together.
    Make sure hidden files are uploaded too: `.htaccess` is required.
 3. **Create the config file.** Copy `api/config.sample.php` to `api/config.php` and fill in the database name, user and password,
    and write a long random text as `setup_key`.
-4. **Create the admin password.** Open `https://yourdomain.com/admin/`. Type the setup key and choose a password (10+ characters).
+4. **Create the owner account.** Open `https://yourdomain.com/admin/`. Type the setup key, a username and a password (10+ characters).
    The tables and the five Bounce products are created automatically.
 5. **Check it.** Open `https://yourdomain.com/assets/config.js`: it must start with `/* live from database */`.
    If you still see the static file, `.htaccess` was not uploaded or `mod_rewrite` is off (ask the host).
@@ -46,6 +46,10 @@ Use **HTTPS** (cPanel → SSL/TLS Status → AutoSSL). The admin login cookie is
   from then on a size with 0 pairs is sold out on the website. Cancelling or returning an order puts its pairs back.
 - **Incomplete orders:** visitors who typed a valid mobile number but did not finish. Call them, then *Confirm and create order* (fill in address and size) or *Cancel*.
   Landing pages need a size before the order can be confirmed, so ask the customer on the call.
+- **Staff logins:** Settings → Staff accounts. Give every person their own login. Staff see only orders and incomplete orders (no prices, profit, ads or settings).
+  The order history shows who confirmed or cancelled each order, and the dashboard counts it per person. Switch an account off when someone leaves.
+- **Manual orders:** Orders → *+ New order* for orders taken by phone or in a Facebook / WhatsApp / Instagram inbox.
+- **Ad spend:** Ads → Campaign → *Ad spend*. Type what you spent per campaign (same name as the campaign in the table); you get cost per order, ROAS and net after ads.
 - **Backup:** Settings → *Download backup (JSON)*. Do it regularly (it contains customer details, keep it private).
   Also use cPanel → *Backup* for a full database backup.
 
