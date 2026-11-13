@@ -6,7 +6,8 @@ date_default_timezone_set('Asia/Dhaka');
 const BG_STATUSES = ['pending' => 'Pending', 'confirmed' => 'Confirmed', 'shipped' => 'Shipped', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'returned' => 'Returned'];
 const BG_SIZES = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 const BG_DEFAULTS = ['whatsapp' => '8801974974973', 'delivery_dhaka' => '80', 'delivery_outside' => '130', 'gtm_id' => '', 'gtm_src' => '',
-    'meta_pixel_id' => '', 'meta_capi_token' => '', 'meta_test_code' => '', 'meta_api_version' => 'v23.0'];
+    'meta_pixel_id' => '', 'meta_capi_token' => '', 'meta_test_code' => '', 'meta_api_version' => 'v23.0',
+    'biz_name' => 'Babyglee', 'biz_phone' => '+880 1974-974973', 'biz_address' => 'Pallabi, Mirpur 12, Dhaka', 'invoice_note' => 'Exchange within 72 hours of delivery. Thank you for shopping with Babyglee!'];
 
 function cfg(): array {
     static $c = null;
@@ -40,7 +41,10 @@ function db(): PDO {
 }
 
 function migrate(PDO $pdo, bool $sqlite): void {
-    try { if ($pdo->query("SELECT v FROM settings WHERE k = 'schema_version'")->fetchColumn() === '1') return; } catch (Throwable $e) { /* first run */ }
+    $ver = 0;
+    try { $ver = (int) $pdo->query("SELECT v FROM settings WHERE k = 'schema_version'")->fetchColumn(); } catch (Throwable $e) { /* first run */ }
+    if ($ver >= 2) return;
+    if ($ver < 1) {
     $ai = $sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT AUTO_INCREMENT PRIMARY KEY';
     $eng = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
     $pdo->exec("CREATE TABLE IF NOT EXISTS settings (k VARCHAR(64) PRIMARY KEY, v TEXT)$eng");
@@ -64,7 +68,13 @@ function migrate(PDO $pdo, bool $sqlite): void {
             $st->execute(['bounce-' . $s[0], 'BSTD-01-' . strtoupper($s[0]), 'Babyglee Bounce — ' . $s[1], $s[1], $s[2], 'img/' . $s[3] . '.webp', 1290, 1800, 15, implode(',', BG_SIZES), 'product-' . $s[0] . '.html', $i, now()]);
         }
     }
-    set_setting('schema_version', '1');
+    }
+    /* version 2: purchase price (cost) for profit, courier details on orders */
+    foreach (["ALTER TABLE products ADD COLUMN cost INT NOT NULL DEFAULT 0", "ALTER TABLE orders ADD COLUMN cost INT NOT NULL DEFAULT 0",
+        "ALTER TABLE orders ADD COLUMN courier VARCHAR(60) NOT NULL DEFAULT ''", "ALTER TABLE orders ADD COLUMN tracking_code VARCHAR(80) NOT NULL DEFAULT ''"] as $q) {
+        try { $pdo->exec($q); } catch (Throwable $e) { /* column already exists */ }
+    }
+    set_setting('schema_version', '2');
 }
 
 function now(): string { return date('Y-m-d H:i:s'); }

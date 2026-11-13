@@ -34,6 +34,14 @@ Use **HTTPS** (cPanel → SSL/TLS Status → AutoSSL). The admin login cookie is
   A new product appears in the shop automatically and gets a page at `product.html?p=<slug>`.
 - **Settings:** GTM container ID, delivery charges, WhatsApp number, Meta Conversions API, password.
   Website changes go live within about a minute.
+- **Invoice and sticker:** open an order and use *Print invoice (A4)* or *Print sticker (3×4)*, or tick several orders in the list and choose a print action.
+  For stickers, choose the 3 × 4 inch label as paper size in the print window, margins *None*, scale 100%.
+- **Purchase price and profit:** enter your cost per pair on each product. Profit = product price minus purchase price (delivery charge and ad spend are not included).
+  Orders placed before you entered a cost have no cost saved.
+- **Ads (UTM):** shows which campaign, ad set and ad bring orders and how many of them get cancelled. It only works when your ads carry UTM tags.
+  In Meta Ads Manager → ad → Tracking → URL parameters, paste:
+  `utm_source=facebook&utm_medium=paid&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}`
+- **Courier:** save the courier name and tracking / consignment ID on the order; it prints on the invoice and sticker.
 - **Backup:** Settings → *Download backup (JSON)*. Do it regularly (it contains customer details, keep it private).
   Also use cPanel → *Backup* for a full database backup.
 
@@ -51,7 +59,13 @@ Use **HTTPS** (cPanel → SSL/TLS Status → AutoSSL). The admin login cookie is
   private files are blocked by `.htaccess`, order flood limit (8 per hour per connection).
 - **Never** commit or share `api/config.php`.
 
-## 4. Local testing (developers)
+## 4. Free hosting for a demo
+
+For showing the full site (store + orders + admin) to someone before buying hosting, a free PHP + MySQL host works, for example InfinityFree.
+Follow the same install steps; the database host is not `localhost` there (the host shows it in its control panel), so set `host` in `api/config.php`.
+Free hosts are slow, have daily limits and may block outgoing connections (Meta Conversions API), so use them for a demo only, never for real customers.
+
+## 5. Local testing (developers)
 
 ```bash
 BG_CONFIG=/path/to/test-config.php php -S 127.0.0.1:8770 router.php

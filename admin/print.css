@@ -1,0 +1,44 @@
+/* Babyglee print layouts: A4 invoice and 3 x 4 inch courier sticker. */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:12pt/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#111;background:#e9eeee}
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#222;color:#fff;padding:10px 14px;font-size:14px}
+.bar a{color:#9fe9ea}.bar span{opacity:.8;flex:1;min-width:160px}
+.bar button{font:inherit;font-weight:700;background:#24babc;color:#fff;border:0;border-radius:10px;padding:10px 22px;cursor:pointer}
+.r{text-align:right}
+
+/* ---------- A4 invoice ---------- */
+.inv{width:210mm;min-height:297mm;margin:10px auto;background:#fff;padding:16mm 15mm;display:flex;flex-direction:column;page-break-after:always;break-after:page}
+.inv header{display:flex;justify-content:space-between;gap:10mm;border-bottom:2px solid #24babc;padding-bottom:6mm}
+.inv header img{height:18mm;margin-bottom:2mm}.inv header p{font-size:10pt;color:#333}
+.inv h1{font-size:22pt;letter-spacing:.08em;color:#0f7a7c;text-align:right}
+.inv .meta table{margin-left:auto;font-size:10pt}.inv .meta td{padding:1mm 0 1mm 5mm;vertical-align:top}.inv .meta td:first-child{color:#666}
+.ship{margin:7mm 0;padding:5mm;border:1px solid #cfe3e3;border-radius:3mm;background:#f6fbfb}
+.ship small,.codbox small{display:block;font-size:8pt;letter-spacing:.1em;color:#0f7a7c;font-weight:700}
+.ship strong{display:block;font-size:15pt}.ship span{display:block;font-size:12pt;font-weight:600}.ship p{margin-top:1.5mm}
+.lines{width:100%;border-collapse:collapse;font-size:10.5pt}
+.lines th{background:#24babc;color:#fff;text-align:left;padding:2.5mm 2mm;font-weight:600}.lines th.r{text-align:right}
+.lines td{padding:2.5mm 2mm;border-bottom:1px solid #e3eeee}
+.sum{display:flex;justify-content:space-between;align-items:flex-start;gap:8mm;margin-top:7mm}
+.sum table{min-width:70mm;font-size:11pt}.sum td{padding:1.5mm 0}.sum .tot td{font-weight:800;font-size:13pt;border-top:2px solid #111;padding-top:2.5mm}
+.codbox{border:2.5px solid #111;border-radius:3mm;padding:4mm 6mm;text-align:center}.codbox small{color:#111}.codbox b{font-size:24pt}
+.inv footer{margin-top:auto;padding-top:6mm;border-top:1px solid #cfe3e3;font-size:9.5pt;color:#444;display:flex;justify-content:space-between;gap:8mm}
+
+/* ---------- 3 x 4 inch sticker ---------- */
+.label{width:3in;height:4in;margin:10px auto;background:#fff;padding:.14in;display:flex;flex-direction:column;overflow:hidden;font-size:9.5pt;page-break-after:always;break-after:page}
+.label header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #111;padding-bottom:.05in}
+.label header b{font-size:13pt}.label header span{font-weight:800;font-size:11pt}
+.label .to{padding:.07in 0}.label small{display:block;font-size:6.5pt;letter-spacing:.1em;font-weight:700}
+.label .to strong{display:block;font-size:13pt;line-height:1.15}.label .to em{display:block;font-style:normal;font-size:15pt;font-weight:800;letter-spacing:.02em}
+.label .to p{font-size:9.5pt;line-height:1.25;margin-top:.03in;max-height:.95in;overflow:hidden}
+.label .its{list-style:none;border-top:1px dashed #111;border-bottom:1px dashed #111;padding:.05in 0;font-size:8.5pt;line-height:1.25;max-height:.72in;overflow:hidden}
+.label .cod{margin-top:auto;border:2.5px solid #111;border-radius:.08in;text-align:center;padding:.05in}.label .cod b{font-size:22pt;line-height:1.1}
+.label footer{display:flex;flex-direction:column;font-size:7.5pt;padding-top:.05in;line-height:1.3}
+
+@media print{
+  body{background:#fff}.noprint{display:none!important}
+  .inv,.label{margin:0;box-shadow:none}
+  .inv:last-child,.label:last-child{page-break-after:auto;break-after:auto}
+}
+@page a4{size:A4;margin:0}
+@page sticker{size:3in 4in;margin:0}
+.inv{page:a4}.label{page:sticker}

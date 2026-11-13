@@ -33,6 +33,18 @@ GitHub Pages: Settings → Pages → Deploy from branch → `main` / root.
 ## Changelog
 Newest first. Every change is recorded here (see `CLAUDE.md`).
 
+### 2026-11-14: invoices, stickers, purchase price and profit, ads (UTM) analytics
+- **Backup first:** `backups/site-2026-11-14-before-invoices.zip`.
+- **A4 invoice and 3 × 4 inch courier sticker** (`admin/index.php?p=print`, `admin/print.css`): address, product details, COD amount, courier and tracking ID; print one order or many at once.
+- **Bulk actions** on the orders list: tick orders, then print invoices / stickers or change status for all of them.
+- **Purchase price** per product (private, never sent to the website). The cost is saved on each order; profit is shown on the order, the dashboard and the ads page.
+- **Ads & UTM page** (`admin/index.php?p=utm`): orders per campaign, ad set, ad / creative and source, split into pending, confirmed, delivered and cancelled, with cancel %, delivered value and estimated profit.
+- **Courier and tracking ID** on each order; **customer history** (earlier orders and cancellations from the same phone number) on the order and as a flag in the list.
+- **Settings:** business name, phone, address and footer note for invoices.
+- **Order spam limit** raised to 30 per hour per address and made configurable (`order_limit_per_hour` in `api/config.php`), because mobile networks share addresses.
+- **Database:** upgrades itself from version 1 to 2 (new columns: `products.cost`, `orders.cost`, `orders.courier`, `orders.tracking_code`). Existing orders are kept.
+- Files: `admin/index.php`, `admin/admin.css`, `admin/print.css`, `api/lib.php`, `api/order.php`, `api/config.sample.php`, `docs/backend-setup.md`.
+
 ### 2026-11-13: backend, admin panel, live catalogue
 - **Backup first:** `backups/site-2026-11-13-before-backend.zip` (the live site before this work).
 - **Backend added** (`api/`): order API with server-side validation and pricing, duplicate and flood protection; live settings/products (`api/live.php`); optional Meta Conversions API Purchase (`api/capi.php`).
