@@ -13,6 +13,77 @@ const toast = (() => { let t; return m => { const e = $('#toast'); if (!e) retur
 const PAGE_TYPES = { home: 'home', shop: 'shop', pdp: 'product', cart: 'cart', checkout: 'checkout', product: 'landing_product', about: 'info', contact: 'info', privacy: 'info', terms: 'info', shipping: 'info' };
 if (page !== 'lpindex') T.pageData(PAGE_TYPES[page] || 'other', page === 'product' ? 'landing' : 'store');
 
+
+/* =====================================================================
+   Catalogue helpers + live data. With the backend (cPanel) BG.LIVE is true and prices, sizes, names and
+   the product list come from the admin panel; on a static host the built-in values are used.
+   ===================================================================== */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const priceOf = s => (PR[s] && PR[s].price) || BG.PRICE;
+const listOf = s => (PR[s] && PR[s].listPrice) || BG.LIST_PRICE || priceOf(s);
+const usdOf = s => (PR[s] && PR[s].priceUsd != null) ? PR[s].priceUsd : BG.PRICE_USD;
+const sizesOf = s => (PR[s] && PR[s].sizes && PR[s].sizes.length) ? PR[s].sizes.map(Number) : null;
+function setPrice(box, slug) {
+  if (!box) return;
+  const p = slug ? priceOf(slug) : BG.PRICE, l = slug ? listOf(slug) : BG.LIST_PRICE, s = $('s', box), b = $('b', box);
+  if (b) b.textContent = fmt(p);
+  if (s) { s.textContent = fmt(l); s.hidden = !(l > p); }
+}
+function limitSizes(root, slug) {
+  const ok = sizesOf(slug);
+  $$('.szc', root).forEach(c => { const i = $('input', c), on = !ok || ok.includes(+i.value); c.hidden = !on; if (!on) i.checked = false; });
+}
+const cardHTML = (s, p) => {
+  const pr = priceOf(s), l = listOf(s), usd = usdOf(s), sz = sizesOf(s) || [21, 36];
+  return `<article class="pcard" data-slug="${esc(s)}"><a class="pic" href="${esc(p.url)}" data-select><img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy"></a>
+  <div class="pbody"><span class="sw" style="background:${esc(p.colorHex || '#24babc')}"></span><a class="pt" href="${esc(p.url)}" data-select><h3>${esc(p.title.replace(/^Babyglee\s+/, ''))}</h3></a>
+  <p class="pmeta">Kids' casual sneaker · EU ${Math.min(...sz)}–${Math.max(...sz)}</p>
+  <div class="prow"><span class="price">${l > pr ? `<s>${fmt(l)}</s> ` : ''}<b>${fmt(pr)}</b></span></div>
+  ${usd ? `<p class="usd-line">US$${usd} <span>international price</span></p>` : ''}
+  <button class="btn sm block qa" type="button" data-qa="${esc(s)}"><svg class="ic" aria-hidden="true"><use href="#i-bag"/></svg> Quick add</button></div></article>`;
+};
+(function hydrate() {
+  const pd = $('.pdp');
+  if (pd && pd.dataset.generic) pd.dataset.slug = new URLSearchParams(location.search).get('p') || '';
+  const slug = pd ? pd.dataset.slug : '';
+  if (BG.LIVE) {
+    /* product grids and the footer list follow the admin catalogue */
+    $$('.grid[data-list]').forEach(g => {
+      const list = Object.keys(PR).filter(s => !(g.dataset.list === 'related' && s === slug));
+      g.innerHTML = list.length ? list.map(s => cardHTML(s, PR[s])).join('') : '<p class="empty-note">No products are available right now. Please check back soon.</p>';
+    });
+    const ft = $('#ftShop'); if (ft) ft.innerHTML = '<h4>Shop</h4>' + Object.keys(PR).map(s => `<a href="${esc(PR[s].url)}">${esc(PR[s].title.replace(/^Babyglee\s+/, ''))}</a>`).join('');
+  }
+  /* hero / default prices */
+  setPrice($('.hero .price-tag')); const hu = $('.hero .usd-note b'); if (hu && BG.PRICE_USD) hu.textContent = 'US$' + BG.PRICE_USD;
+  if (!pd) return;
+  const p = PR[slug];
+  if (!p) {
+    if (BG.LIVE || pd.dataset.generic) {
+      pd.classList.add('gone');
+      const info = $('.pdp-info', pd); if (info) info.innerHTML = '<span class="pill">Babyglee®</span><h1>This product is no longer available</h1><p class="pmeta">It may be sold out or removed. Have a look at the rest of the collection.</p><p><a class="btn" href="' + (BG.BASE || '') + 'shop.html">Go to the shop</a></p>';
+      $$('#order,#pdpBar,#stickyCta,.badge,#stage img').forEach(e => e.remove()); document.body.dataset.page = 'gone';
+    }
+    return;
+  }
+  /* product / landing page follows the admin data */
+  const short = p.title.replace(/^Babyglee\s+/, ''), pr = priceOf(slug), l = listOf(slug), usd = usdOf(slug);
+  if (BG.LIVE || pd.dataset.generic) {
+    const h1 = $('h1', pd); if (h1) h1.textContent = short;
+    const cr = $('.crumbs span'); if (cr) cr.textContent = short;
+    $$('#stage img.shoe, .sum-head img').forEach(i => { i.src = (pd.dataset.img ? '../' : '') + p.img; i.alt = p.title; });
+    const sh = $('.sum-head b'); if (sh) sh.textContent = short;
+    const pill = $('.pdp-info .pill'); if (pill && p.sku) pill.textContent = 'Babyglee® · ' + p.sku;
+    document.title = p.title + ' | Kids\' Sneakers ' + fmt(pr);
+    if (pd.dataset.name) pd.dataset.name = p.title;
+  }
+  setPrice($('.price-tag', pd), slug); setPrice($('#pdpBar .pb-p'), slug); setPrice($('#stickyCta div'), slug);
+  const save = $('.price-tag.lg span', pd); if (save) { save.textContent = 'You save ' + fmt(l - pr); save.hidden = !(l > pr); }
+  const badge = $('.badge', pd); if (badge) { badge.textContent = 'Save ' + Math.round((l - pr) / l * 100) + '%'; badge.hidden = !(l > pr); }
+  const un = $('.usd-note', pd); if (un) { const b = $('b', un); if (b) b.textContent = 'US$' + usd; un.hidden = !usd; }
+  limitSizes(pd, slug); const of = $('#orderForm'); if (of) limitSizes(of, slug);
+})();
+
 /* ---------- mobile menu ---------- */
 const burger = $('#burger'), nav = $('#nav');
 if (burger) {
@@ -167,12 +238,18 @@ const buildOrder = (form, source, items, area) => {
 /* Sends the order to ORDER_ENDPOINT. With no endpoint the site is in demo mode: the order is only kept locally. */
 async function sendOrder(order) {
   if (BG.ORDER_ENDPOINT) {
-    try { await fetch(BG.ORDER_ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(order) }); return true; }
-    catch (e) { return false; }
+    try {
+      const r = await fetch(BG.ORDER_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(order) });
+      const j = await r.json().catch(() => null);
+      if (j && j.ok) { if (j.total) { order.total = j.total; order.delivery = j.delivery != null ? j.delivery : order.delivery; } return { ok: true }; }
+      return { ok: false, msg: j && j.error };
+    } catch (e) { return { ok: false }; }
   }
   try { const k = 'bg_demo_orders', all = JSON.parse(localStorage.getItem(k) || '[]'); all.push(order); localStorage.setItem(k, JSON.stringify(all)); } catch (e) {}
-  return true;
+  return { ok: true, demo: true };
 }
+const SEND_ERR = "Sorry, we couldn't place your order. Please check your connection and try again, or call us.";
+function sendFailed(res) { const e = $('#sendErr'); e.textContent = res.msg || SEND_ERR; e.hidden = false; $('#submitBtn').disabled = false; e.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 function showDone(order) {
   $('#oid').textContent = '#' + order.id;
   $('#rItems').textContent = order.items.map(i => `${i.product} — EU ${i.size} × ${i.qty}`).join('\n');
@@ -214,9 +291,9 @@ function watchShipping(form, fields, getItems, area) {
 /* =====================================================================
    LANDING PAGES (lp/*.html): single-product, single-page checkout
    ===================================================================== */
-const lp = page === 'product' ? $('.pdp') : null, lform = $('#orderForm');
+const lp = (page === 'product' && document.body.dataset.page !== 'gone') ? $('.pdp') : null, lform = $('#orderForm');
 if (lp && lform) {
-  const name = lp.dataset.name, slug = lp.dataset.slug, PRICE = BG.PRICE;
+  const name = lp.dataset.name, slug = lp.dataset.slug, PRICE = priceOf(slug);
   fillCharges();
   T.ecom('view_item', { value: PRICE, items: [T.item(slug)] }, { page_type: 'landing_product' });
   let qty = 1, started = false, sending = false;
@@ -251,7 +328,8 @@ if (lp && lform) {
     const order = buildOrder(lform, 'landing', items, area());
     order.tracking = await trackingBlock(lform, order);
     await stageEvent('add_payment_info', lform, lineItems(), area());
-    if (!(await sendOrder(order))) { $('#sendErr').hidden = false; $('#submitBtn').disabled = false; sending = false; $('#sendErr').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    const res = await sendOrder(order);
+    if (!res.ok) { sending = false; sendFailed(res); return; }
     await firePurchase(lform, order, lineItems(), area());
     $('.co-grid').hidden = true; showDone(order);
   });
@@ -268,8 +346,8 @@ const loadCart = () => { try { const c = JSON.parse(localStorage.getItem(KEY) ||
 let cart = loadCart();
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(cart.map(({ slug, size, qty }) => ({ slug, size, qty })))); } catch (e) {} };
 const count = () => cart.reduce((a, i) => a + i.qty, 0);
-const subtotal = () => count() * BG.PRICE;
-const toOrderItems = list => list.map(i => ({ product: PR[i.slug].title, slug: i.slug, size: i.size, qty: i.qty, price: BG.PRICE }));
+const subtotal = () => cart.reduce((a, i) => a + i.qty * priceOf(i.slug), 0);
+const toOrderItems = list => list.map(i => ({ product: PR[i.slug].title, slug: i.slug, size: i.size, qty: i.qty, price: priceOf(i.slug) }));
 const buyNowItem = () => { try { const b = JSON.parse(sessionStorage.getItem(BN) || 'null'); return b && PR[b.slug] && b.size ? { ...b, k: b.slug + '|' + b.size } : null; } catch (e) { return null; } };
 
 const lineHTML = (i, edit) => {
@@ -277,7 +355,7 @@ const lineHTML = (i, edit) => {
   return `<div class="cl" data-k="${i.k}"><a href="${p.url}"><img src="${p.img}" alt="" loading="lazy"></a>
     <div class="cl-i"><b>${p.title}</b><small>Size EU ${i.size}</small>
     ${edit ? `<div class="qty sm"><button type="button" data-act="dec" aria-label="Decrease quantity">−</button><output>${i.qty}</output><button type="button" data-act="inc" aria-label="Increase quantity">+</button></div>` : `<small>Qty ${i.qty}</small>`}</div>
-    <div class="cl-p"><b>${fmt(i.qty * BG.PRICE)}</b>${edit ? '<button type="button" class="rm" data-act="rm">Remove</button>' : ''}</div></div>`;
+    <div class="cl-p"><b>${fmt(i.qty * priceOf(i.slug))}</b>${edit ? '<button type="button" class="rm" data-act="rm">Remove</button>' : ''}</div></div>`;
 };
 
 let onCartChange = () => {};
@@ -292,25 +370,25 @@ function refresh() {
 }
 function change(k, d) {
   const i = cart.find(x => x.k === k); if (!i) return;
-  if (d < 0) T.ecom('remove_from_cart', { value: BG.PRICE, items: [T.item(i.slug, { size: i.size, qty: 1 })] });
+  if (d < 0) T.ecom('remove_from_cart', { value: priceOf(i.slug), items: [T.item(i.slug, { size: i.size, qty: 1 })] });
   i.qty += d; if (i.qty < 1) cart = cart.filter(x => x !== i); else i.qty = Math.min(10, i.qty);
   persist(); refresh();
 }
 function removeLine(k) {
   const i = cart.find(x => x.k === k); if (!i) return;
-  T.ecom('remove_from_cart', { value: BG.PRICE * i.qty, items: [T.item(i.slug, { size: i.size, qty: i.qty })] });
+  T.ecom('remove_from_cart', { value: priceOf(i.slug) * i.qty, items: [T.item(i.slug, { size: i.size, qty: i.qty })] });
   cart = cart.filter(x => x !== i); persist(); refresh();
 }
 function addToCart(slug, size, qty) {
   const k = slug + '|' + size, ex = cart.find(i => i.k === k);
   if (ex) ex.qty = Math.min(10, ex.qty + qty); else cart.push({ k, slug, size, qty: Math.min(10, qty) });
   persist(); refresh();
-  T.ecom('add_to_cart', { value: BG.PRICE * qty, items: [T.item(slug, { size, qty })] });
+  T.ecom('add_to_cart', { value: priceOf(slug) * qty, items: [T.item(slug, { size, qty })] });
   const fab = $('#cartFab'); if (fab) { fab.classList.remove('bump'); void fab.offsetWidth; fab.classList.add('bump'); }
 }
 function buyNow(slug, size, qty) {
   try { sessionStorage.setItem(BN, JSON.stringify({ slug, size, qty })); } catch (e) {}
-  T.ecom('add_to_cart', { value: BG.PRICE * qty, items: [T.item(slug, { size, qty })] }, { buy_now: true });
+  T.ecom('add_to_cart', { value: priceOf(slug) * qty, items: [T.item(slug, { size, qty })] }, { buy_now: true });
   location.href = 'checkout.html?buy=1';
 }
 
@@ -359,7 +437,7 @@ if (qa) {
   const draw = () => $('#qaQv').textContent = q;
   const open = s => {
     slug = s; q = 1; draw(); $$('input[name=qasize]', qa).forEach(r => r.checked = false); $('#qaErr').textContent = '';
-    $('#qaImg').src = PR[s].img; $('#qaName').textContent = PR[s].title; qa.querySelector('[data-open-size]').sizeTarget = eu => { const r = qa.querySelector(`input[name=qasize][value="${eu}"]`); if (r) { r.checked = true; $('#qaErr').textContent = ''; } };
+    $('#qaImg').src = PR[s].img; $('#qaName').textContent = PR[s].title; setPrice($('.qa-head .price', qa), s); limitSizes(qa, s); { const u = $('.qa-head .usd-line', qa); if (u) u.hidden = !usdOf(s); } qa.querySelector('[data-open-size]').sizeTarget = eu => { const r = qa.querySelector(`input[name=qasize][value="${eu}"]`); if (r) { r.checked = true; $('#qaErr').textContent = ''; } };
     openSheet(qa); T.push({ event: 'quick_add_open', item_id: PR[s].sku });
   };
   document.addEventListener('click', e => { const b = e.target.closest('[data-qa]'); if (b) { lastFocus = b; open(b.dataset.qa); } });
@@ -372,7 +450,7 @@ if (qa) {
 }
 
 /* store product page: choose size, add to cart / buy now (+ sticky bar on phones) */
-if (page === 'pdp') {
+if (page === 'pdp' && document.body.dataset.page !== 'gone') {
   const pd = $('#pdp'), slug = pd.dataset.slug;
   let q = 1;
   const size = () => (pd.querySelector('input[name=size]:checked') || {}).value;
@@ -381,7 +459,7 @@ if (page === 'pdp') {
   $('#qp').onclick = () => { q = Math.min(10, q + 1); draw(); };
   pd.addEventListener('change', () => { if (size()) { $('#sizeErr').textContent = ''; T.push({ event: 'select_size', item_id: PR[slug].sku, size: 'EU ' + size() }); } });
   const sg = pd.querySelector('[data-open-size]'); if (sg) sg.sizeTarget = eu => { const r = pd.querySelector(`input[name=size][value="${eu}"]`); if (r) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } };
-  T.ecom('view_item', { value: BG.PRICE, items: [T.item(slug)] }, { page_type: 'product' });
+  T.ecom('view_item', { value: priceOf(slug), items: [T.item(slug)] }, { page_type: 'product' });
   const need = () => {
     if (size()) return true;
     $('#sizeErr').textContent = 'Please select a size';
@@ -408,7 +486,7 @@ if (page === 'checkout') {
   const area = () => el(form, 'area').value;
   const colLines = $('#coLines');
   const draw = () => {
-    const l = lines(), sub = l.reduce((a, i) => a + i.qty * BG.PRICE, 0), del = l.length ? BG.DELIVERY[area()] : 0;
+    const l = lines(), sub = l.reduce((a, i) => a + i.qty * priceOf(i.slug), 0), del = l.length ? BG.DELIVERY[area()] : 0;
     colLines.innerHTML = l.length ? l.map(i => lineHTML(i, false)).join('') : '<p class="empty-note">Your cart is empty.</p>';
     $('#sSub').textContent = fmt(sub); $('#sDel').textContent = fmt(del); $('#sTot').textContent = fmt(sub + del); $('#sumTop').textContent = fmt(sub + del);
     $('#submitBtn').textContent = 'Place order — ' + fmt(sub + del);
@@ -431,7 +509,8 @@ if (page === 'checkout') {
     const order = buildOrder(form, 'store', toOrderItems(lines()), area());
     order.tracking = await trackingBlock(form, order);
     await stageEvent('add_payment_info', form, lines(), area());
-    if (!(await sendOrder(order))) { $('#sendErr').hidden = false; $('#submitBtn').disabled = false; sending = false; $('#sendErr').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    const res = await sendOrder(order);
+    if (!res.ok) { sending = false; sendFailed(res); return; }
     await firePurchase(form, order, lines(), area());
     if (bn) { try { sessionStorage.removeItem(BN); } catch (e) {} } else { cart = []; persist(); refresh(); }
     $('#coGrid').hidden = true; showDone(order);

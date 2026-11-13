@@ -18,6 +18,10 @@ Static, mobile-first website for Babyglee kids' sneakers (teal `#24babc` theme).
 ## Tracking
 All pixels live in Google Tag Manager. The site pushes GA4 e-commerce events and hashed customer data to `dataLayer`. Setup guide: [`docs/gtm-tracking.md`](docs/gtm-tracking.md). Add `?bgdebug=1` to any URL to see the events on screen.
 
+## Backend (cPanel, PHP + MySQL)
+Order API (`api/`), admin panel (`admin/`: orders, status, analytics, products, settings, backup) and uploaded images (`uploads/`).
+Setup guide: [`docs/backend-setup.md`](docs/backend-setup.md). On a static host (GitHub Pages) the backend does not run and the site stays in demo mode.
+
 ## Checkout / backend status
 The checkout form places the order on the page (order ID + confirmation). It posts each order as JSON to
 `ORDER_ENDPOINT` in `assets/config.js`. **While that is empty the site is in demo mode: orders are NOT sent anywhere**
@@ -25,3 +29,26 @@ The checkout form places the order on the page (order ID + confirmation). It pos
 
 ## Host
 GitHub Pages: Settings → Pages → Deploy from branch → `main` / root.
+
+## Changelog
+Newest first. Every change is recorded here (see `CLAUDE.md`).
+
+### 2026-11-13: backend, admin panel, live catalogue
+- **Backup first:** `backups/site-2026-11-13-before-backend.zip` (the live site before this work).
+- **Backend added** (`api/`): order API with server-side validation and pricing, duplicate and flood protection; live settings/products (`api/live.php`); optional Meta Conversions API Purchase (`api/capi.php`).
+- **Admin panel added** (`admin/`): login and first-time setup, orders list with search and status filter, order detail with status history and notes, dashboard analytics, product add / edit / remove with image upload and sizes in stock, settings (GTM ID, delivery charges, WhatsApp, Meta CAPI, password), CSV export and JSON backup.
+- **Storefront connected to the backend:** per-product price, old price, USD price and sizes; product grids, product pages, landing pages and quick add follow admin data; new `product.html` template for products added in the admin; checkout shows the server's error message and total.
+- **Site settings** moved to the database when the backend is present (`.htaccess` serves `assets/config.js` and `assets/products.js` from `api/live.php`).
+- **Mobile UX:** floating WhatsApp and cart buttons, size guide and Quick add bottom sheets, sticky buy bar, Buy now (single item, cart untouched), collapsible checkout summary, sticky Place order button, district dropdown, optional email.
+- **Tracking:** GTM loader and full GA4 e-commerce data layer with hashed customer data (`assets/tracking.js`, `docs/gtm-tracking.md`).
+- **Docs and rules:** `docs/backend-setup.md`, `CLAUDE.md` (changelog + backup rules).
+- Files: `api/*`, `admin/*`, `.htaccess`, `uploads/.htaccess`, `.gitignore`, `assets/main.js`, `assets/tracking.js`, `assets/style.css`, `assets/config.js`, `tools/build.py`, generated pages.
+
+### 2026-11-13: hidden list of ad landing links
+- `lp/index.html` with copy buttons (not linked from anywhere, noindex).
+
+### 2026-11-09: store and landing pages split
+- Regular store (product pages, cart, checkout) and five separate single-page-checkout landing pages in `lp/`.
+
+### 2026-11-09: first version
+- Home, shop, policies, international positioning (English copy, BDT and USD prices, Shipping to Bangladesh).

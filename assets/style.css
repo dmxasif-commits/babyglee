@@ -331,6 +331,7 @@ body.bar-on .toast{bottom:96px}
 @media(min-width:721px){.sheet-wrap{align-items:center}.sheet{border-radius:24px;max-height:86vh}}
 @media(min-width:981px){.co-submit{position:static;padding:0}.sum-d summary{pointer-events:none}.sum-d summary::after{display:none}}
 @media(max-width:720px){
+  .ftr-bottom{padding-bottom:calc(92px + env(safe-area-inset-bottom))}.lp-ftr .ftr-bottom,[data-page=product] .ftr-bottom{padding-bottom:22px}
   .pdp-bar{display:flex}
   [data-page=checkout] .fab{display:none}
   .co-submit{margin:0 -16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:2px solid var(--teal-l)}

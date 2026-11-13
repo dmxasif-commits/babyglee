@@ -1,0 +1,17 @@
+# Babyglee (cPanel / Apache). On GitHub Pages this file is ignored and the static files are used.
+Options -Indexes
+<IfModule mod_rewrite.c>
+RewriteEngine On
+# Live settings and products come from the database (admin panel) instead of the static files.
+RewriteRule ^assets/config\.js$ api/live.php?f=config [L,QSA]
+RewriteRule ^assets/products\.js$ api/live.php?f=products [L,QSA]
+# Private files and folders.
+RewriteRule ^api/(config(\.sample)?|lib|capi)\.php$ - [F,L]
+RewriteRule ^(tools|backups|docs|\.git)(/|$) - [F,L]
+</IfModule>
+<FilesMatch "\.(md|py|zip|sqlite)$">
+  Require all denied
+</FilesMatch>
+<IfModule mod_headers.c>
+Header set X-Content-Type-Options "nosniff"
+</IfModule>

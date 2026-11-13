@@ -136,7 +136,7 @@ def footer():
       <div class="soc"><a href="https://facebook.com/Babyglee.Official" target="_blank" rel="noopener" aria-label="Babyglee on Facebook">{ic("facebook")}</a>
       <a href="https://wa.me/{WA}" target="_blank" rel="noopener" aria-label="WhatsApp">{ic("whatsapp")}</a></div>
     </div>
-    <div><h4>Shop</h4>{"".join(f'<a href="{store_url(p)}">Bounce — {p["short"]}</a>' for p in PRODUCTS)}</div>
+    <div id="ftShop"><h4>Shop</h4>{"".join(f'<a href="{store_url(p)}">Bounce — {p["short"]}</a>' for p in PRODUCTS)}</div>
     <div><h4>Company</h4><a href="about.html">About us</a><a href="contact.html">Contact us</a><a href="shipping-returns.html">Shipping &amp; returns</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms &amp; conditions</a></div>
     <div><h4>Get in touch</h4>
       <a href="https://wa.me/{WA}">{ic("whatsapp")} {PHONE_DISPLAY}</a>
@@ -433,7 +433,8 @@ def page_landing(p):
     h += lp_footer()
     write(lp_url(p), rebase(h, "../"))
 
-def page_pdp(p):
+def page_pdp(p, generic=False):
+    GEN = ' data-generic="1"' if generic else ''
     """Regular e-commerce product page: choose size, add to cart."""
     url = BASE + store_url(p)
     ld = {"@context": "https://schema.org", "@type": "Product", "name": f"Babyglee Bounce — {p['name']}", "image": BASE + f"img/{p['img']}.webp",
@@ -444,7 +445,7 @@ def page_pdp(p):
     h += header("shop")
     sizes = "".join(f'<label class="szc"><input type="radio" name="size" value="{n}"><span>{n}</span></label>' for n in range(21, 37))
     h += f'''<div class="wrap crumbs"><a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <span>Bounce — {p["name"]}</span></div>
-<section class="pdp" id="pdp" data-slug="{p["slug"]}">
+<section class="pdp" id="pdp" data-slug="{p["slug"]}"{GEN}>
   <div class="wrap pdp-in">
     <div class="pdp-stage tilt-stage" id="stage"><div class="disc"></div><img class="shoe" data-depth="50" src="img/{p["img"]}.webp" alt="Babyglee Bounce sneakers — {p["name"]}" fetchpriority="high"><span class="badge">Save {round((LIST-PRICE)/LIST*100)}%</span></div>
     <div class="pdp-info">
@@ -480,7 +481,12 @@ def page_pdp(p):
     h += f'''<div class="pdp-bar" id="pdpBar" aria-label="Quick buy"><div class="pb-p"><s>{fmt(LIST)}</s><b>{fmt(PRICE)}</b></div>
   <button class="btn" type="button" id="barAdd">Add to cart</button><button class="btn ghost" type="button" id="barBuy">Buy now</button></div>'''
     h += footer()
-    write(store_url(p), h)
+    if generic:
+        h = h.replace('<meta name="theme-color"', '<meta name="robots" content="noindex">\n<meta name="theme-color"', 1)
+        h = re.sub(r'<script type="application/ld\+json">.*?</script>\n?', '', h, count=1, flags=re.S)
+        write("product.html", h)
+    else:
+        write(store_url(p), h)
 
 def page_cart():
     h = head("Your cart — Babyglee", "Review the items in your Babyglee cart.", "cart", extra='<meta name="robots" content="noindex">')
@@ -624,5 +630,6 @@ if __name__ == "__main__":
     page_home(); page_shop(); page_about(); page_contact(); page_shipping(); page_privacy(); page_terms(); page_cart(); page_checkout()
     for p in PRODUCTS:
         page_pdp(p); page_landing(p)
+    page_pdp(PRODUCTS[0], generic=True)   # template for products added later in the admin panel (product.html?p=<slug>)
     page_lp_index(); write_products_js()
     print("built", len(list(OUT.glob("*.html"))), "store pages +", len(list((OUT / "lp").glob("*.html"))), "landing pages")

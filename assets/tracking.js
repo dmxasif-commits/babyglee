@@ -147,7 +147,7 @@
   function item(slug, opt) {
     var P = (window.BG_PRODUCTS || {})[slug]; if (!P) return null; opt = opt || {};
     var it = { item_id: P.sku, item_name: P.title, item_brand: 'Babyglee', item_category: 'Kids sneakers', item_category2: 'Bounce series',
-      item_variant: opt.size ? P.color + ' / EU ' + opt.size : P.color, price: BG.PRICE, discount: Math.max(0, (BG.LIST_PRICE || BG.PRICE) - BG.PRICE), quantity: opt.qty || 1 };
+      item_variant: opt.size ? P.color + ' / EU ' + opt.size : P.color, price: P.price || BG.PRICE, discount: Math.max(0, (P.listPrice || BG.LIST_PRICE || BG.PRICE) - (P.price || BG.PRICE)), quantity: opt.qty || 1 };
     if (opt.index != null) it.index = opt.index;
     if (opt.listId) { it.item_list_id = opt.listId; it.item_list_name = opt.listName || opt.listId; }
     return it;
