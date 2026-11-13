@@ -63,7 +63,7 @@ def age_band(eu):
 
 def size_table():
     rows = "".join(
-        f"<tr><td><b>EU {eu}</b></td><td>{eu/1.5-1.5:.1f} cm</td><td>{age_band(eu)}</td></tr>" for eu in range(21, 37))
+        f"<tr data-eu=\"{eu}\"><td><b>EU {eu}</b></td><td>{eu/1.5-1.5:.1f} cm</td><td>{age_band(eu)}</td></tr>" for eu in range(21, 37))
     return (f'<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Shoe size</th><th>Foot length</th><th>Age (approx.)</th></tr></thead>'
             f'<tbody>{rows}</tbody></table></div>'
             '<p class="fine">Measure from heel to the longest toe. Sizes are approximate, so our team also confirms the size with you by call or message before shipping.</p>')
@@ -90,6 +90,9 @@ def head(title, desc, page, img="img/sky-blue-yellow.webp", extra=""):
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
+<script src="assets/config.js"></script>
+<script src="assets/products.js"></script>
+<script src="assets/tracking.js"></script>
 {extra}
 </head>
 <body data-page="{page}">
@@ -115,11 +118,13 @@ def header(active):
       <ul class="sm-l"><li>{ic("truck")} Home delivery</li><li>{ic("cash")} Cash on Delivery</li><li>{ic("exchange")} 72-hour exchange</li></ul>
     </div>
   </div>
-  <button class="cart-btn" id="cartBtn" aria-label="Open cart">{ic("bag")}<i id="cartCount">0</i></button>
+  <button class="cart-btn" id="cartBtn" aria-label="Open cart">{ic("bag")}<i id="cartCount" class="js-cart-count">0</i></button>
   <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false">{ic("menu")}</button>
 </div></header>
 <main>
 '''
+
+qa_chips = "".join(f'<label class="szc"><input type="radio" name="qasize" value="{n}"><span>{n}</span></label>' for n in range(21, 37))
 
 def footer():
     return f'''</main>
@@ -131,7 +136,7 @@ def footer():
       <div class="soc"><a href="https://facebook.com/Babyglee.Official" target="_blank" rel="noopener" aria-label="Babyglee on Facebook">{ic("facebook")}</a>
       <a href="https://wa.me/{WA}" target="_blank" rel="noopener" aria-label="WhatsApp">{ic("whatsapp")}</a></div>
     </div>
-    <div><h4>Shop</h4>{"".join(f'<a href="{store_url(p)}">Bounce — {p["short"]}</a>' for p in PRODUCTS)}</div>
+    <div id="ftShop"><h4>Shop</h4>{"".join(f'<a href="{store_url(p)}">Bounce — {p["short"]}</a>' for p in PRODUCTS)}</div>
     <div><h4>Company</h4><a href="about.html">About us</a><a href="contact.html">Contact us</a><a href="shipping-returns.html">Shipping &amp; returns</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms &amp; conditions</a></div>
     <div><h4>Get in touch</h4>
       <a href="https://wa.me/{WA}">{ic("whatsapp")} {PHONE_DISPLAY}</a>
@@ -142,6 +147,37 @@ def footer():
   </div>
   <div class="wrap ftr-bottom"><span>© 2025 Babyglee® — A concern of AMC Knit Composite Ltd.</span><span>Trademark Reg. No. 210926 (Class 25) · Trade licence TRAD/DNCC/090476/2022</span></div>
 </footer>
+<a class="fab fab-wa" id="waFab" href="https://wa.me/{WA}" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp">{ic("whatsapp")}</a>
+<button class="fab fab-cart" id="cartFab" type="button" aria-label="Open cart">{ic("bag")}<i class="js-cart-count">0</i></button>
+<div class="sheet-wrap" id="sizeModal" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="szTitle">
+    <header><h3 id="szTitle">Size guide</h3><button class="icon-btn" type="button" data-close aria-label="Close size guide">{ic("close")}</button></header>
+    <div class="sheet-body">
+      <p class="sub">Measure your child's foot from heel to longest toe, then slide to match.</p>
+      <label class="sl" for="szCm">Foot length: <b id="szCmOut">14.0</b> cm</label>
+      <input type="range" id="szCm" min="12" max="23" step="0.5" value="14">
+      <div class="size-res"><span>Suggested size</span><b id="szOut">EU 23</b><em id="szAge">≈ 1–2 yrs</em></div>
+      <button class="btn block" type="button" id="szUse" hidden>Select this size</button>
+      <h4 class="sheet-h">All sizes</h4>
+      {size_table()}
+    </div>
+  </section>
+</div>
+<div class="sheet-wrap" id="qaSheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="qaTitle">
+    <header><h3 id="qaTitle">Choose your size</h3><button class="icon-btn" type="button" data-close aria-label="Close">{ic("close")}</button></header>
+    <div class="sheet-body">
+      <div class="qa-head"><img id="qaImg" src="img/logo.webp" alt=""><div><b id="qaName"></b><div class="price"><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></div><small class="usd-line">US${PRICE_USD} <span>international price</span></small></div></div>
+      <fieldset class="fld"><legend>Select size (EU) <button type="button" class="lnk" data-open-size>Size guide</button></legend>
+        <div class="szs" id="qaSizes">{qa_chips}</div><small class="err" id="qaErr"></small></fieldset>
+      <div class="buy-row"><div class="qty"><button type="button" id="qaQm" aria-label="Decrease quantity">−</button><output id="qaQv">1</output><button type="button" id="qaQp" aria-label="Increase quantity">+</button></div>
+        <button class="btn lg" type="button" id="qaAdd">{ic("bag")} Add to cart</button></div>
+      <button class="btn ghost lg block" type="button" id="qaBuy">Buy now</button>
+    </div>
+  </section>
+</div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Shopping cart" aria-hidden="true">
   <header><h3>Your cart</h3><button class="icon-btn" id="closeCart" aria-label="Close cart">{ic("close")}</button></header>
@@ -151,8 +187,6 @@ def footer():
     <small>Delivery is calculated at checkout · Cash on Delivery</small></footer>
 </aside>
 <div class="toast" id="toast" role="status"></div>
-<script src="assets/config.js"></script>
-<script src="assets/products.js"></script>
 <script src="assets/main.js"></script>
 </body>
 </html>
@@ -170,13 +204,14 @@ def trust_strip():
         f'<div class="tr">{ic(i)}<div><b>{t}</b><span>{s}</span></div></div>' for i, t, s in TRUST) + "</div></section>"
 
 def card(p):
-    return f'''<a class="pcard" href="{store_url(p)}">
-  <div class="pic"><img src="img/{p["img"]}.webp" alt="Babyglee Bounce sneaker — {p["name"]}" loading="lazy"></div>
-  <div class="pbody"><span class="sw" style="background:{p["color"]}"></span><h3>Bounce — {p["name"]}</h3>
+    return f'''<article class="pcard" data-slug="{p["slug"]}">
+  <a class="pic" href="{store_url(p)}" data-select><img src="img/{p["img"]}.webp" alt="Babyglee Bounce sneaker — {p["name"]}" loading="lazy"></a>
+  <div class="pbody"><span class="sw" style="background:{p["color"]}"></span><a class="pt" href="{store_url(p)}" data-select><h3>Bounce — {p["name"]}</h3></a>
   <p class="pmeta">Kids' casual sneaker · EU 21–36</p>
-  <div class="prow"><span class="price"><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></span><span class="go">View &amp; order →</span></div>
-  <p class="usd-line">US${PRICE_USD} <span>international price</span></p></div>
-</a>'''
+  <div class="prow"><span class="price"><s>{fmt(LIST)}</s> <b>{fmt(PRICE)}</b></span></div>
+  <p class="usd-line">US${PRICE_USD} <span>international price</span></p>
+  <button class="btn sm block qa" type="button" data-qa="{p["slug"]}">{ic("bag")} Quick add</button></div>
+</article>'''
 
 FEATURES = [
  ("layers", "Multi-density sole", "Cushions every step and helps protect growing joints."),
@@ -235,7 +270,7 @@ def page_home():
 {trust_strip()}
 <section class="sec"><div class="wrap">
   <div class="sec-head"><span class="eyebrow">Babyglee® Bounce series</span><h2>Pick your favourite colour</h2><p>Five colours, one super-comfy design. Every pair comes in EU sizes 21–36.</p></div>
-  <div class="grid five">{"".join(card(p) for p in PRODUCTS)}</div>
+  <div class="grid five" data-list="home_featured" data-list-name="Home - Featured">{"".join(card(p) for p in PRODUCTS)}</div>
   <p class="center"><a class="btn ghost" href="shop.html">See the full shop</a></p>
 </div></section>
 <section class="sec intl"><div class="wrap">
@@ -280,7 +315,7 @@ def page_shop():
     h += f'''<section class="page-hero"><div class="wrap"><span class="eyebrow">Shop</span><h1>Babyglee® Bounce series</h1>
 <p>Kids' casual sneakers with breathable mesh upper, velcro strap and anti-slip shock-absorbing sole. EU 21–36.</p></div></section>
 <section class="sec"><div class="wrap">
-  <div class="grid five">{"".join(card(p) for p in PRODUCTS)}</div>
+  <div class="grid five" data-list="shop" data-list-name="Shop">{"".join(card(p) for p in PRODUCTS)}</div>
 </div></section>
 {trust_strip()}
 <section class="sec alt"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">Size guide</span><h2>Not sure about the size?</h2></div>{size_table()}</div></section>
@@ -322,11 +357,25 @@ def lp_footer():
   <nav><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a><a href="terms.html" target="_blank" rel="noopener">Terms &amp; conditions</a><a href="shipping-returns.html" target="_blank" rel="noopener">Shipping &amp; returns</a><a href="contact.html" target="_blank" rel="noopener">Contact us</a></nav>
   <p class="copy">© 2025 Babyglee® — A concern of AMC Knit Composite Ltd. · {PHONE_DISPLAY} · info@babygleebd.com</p>
 </div></footer>
-<script src="assets/config.js"></script>
 <script src="assets/main.js"></script>
 </body>
 </html>
 '''
+
+DISTRICTS = ['Bagerhat', 'Bandarban', 'Barguna', 'Barishal', 'Bhola', 'Bogura', 'Brahmanbaria', 'Chandpur', 'Chapainawabganj', 'Chattogram', 'Chuadanga', 'Cumilla', "Cox's-Bazar", 'Dhaka', 'Dinajpur', 'Faridpur', 'Feni', 'Gaibandha', 'Gazipur', 'Gopalganj', 'Habiganj', 'Jamalpur', 'Jashore', 'Jhalokathi', 'Jhenaidah', 'Joypurhat', 'Khagrachhari', 'Khulna', 'Kishoreganj', 'Kurigram', 'Kushtia', 'Lakshmipur', 'Lalmonirhat', 'Madaripur', 'Magura', 'Manikganj', 'Meherpur', 'Moulvibazar', 'Munshiganj', 'Mymensingh', 'Naogaon', 'Narail', 'Narayanganj', 'Narsingdi', 'Natore', 'Netrokona', 'Nilphamari', 'Noakhali', 'Pabna', 'Panchagarh', 'Patuakhali', 'Pirojpur', 'Rajbari', 'Rajshahi', 'Rangamati', 'Rangpur', 'Satkhira', 'Shariatpur', 'Sherpur', 'Sirajganj', 'Sunamganj', 'Sylhet', 'Tangail', 'Thakurgaon']
+
+def contact_fields():
+    """Customer fields shared by the store checkout and the landing pages (same names, same validation)."""
+    opts = "".join(f'<option value="{d.replace("-", " ")}">{d.replace("-", " ")}</option>' for d in DISTRICTS)
+    return f"""<div class="fld"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" required><small class="err"></small></div>
+      <div class="fld"><label for="f-phone">Mobile number</label><div class="phone"><span class="pfx"><span class="cc-code">BD</span>+88</span><input id="f-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="01XXXXXXXXX" aria-describedby="phoneHint" required></div><small class="fine" id="phoneHint">11 digits, starting with 01</small><small class="err"></small></div>
+      <div class="fld"><label for="f-email">Email <span class="opt-t">(optional)</span></label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com"><small class="err"></small></div>
+      <div class="fld"><label for="f-country">Country</label><div class="country"><span class="cc-code">BD</span><input id="f-country" name="country" value="Bangladesh" readonly aria-readonly="true"></div><small class="fine">We currently deliver to Bangladesh.</small></div>
+      <div class="fld"><label for="f-district">District</label><select id="f-district" name="district" autocomplete="address-level1" required><option value="">Select your district</option>{opts}</select><small class="err"></small></div>
+      <div class="fld"><label for="f-addr">Full address</label><textarea id="f-addr" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area, thana" required></textarea><small class="err"></small></div>
+      <fieldset class="fld"><legend>Delivery area</legend>
+        <div class="opts"><label class="opt"><input type="radio" name="area" value="dhaka" checked><span><b>Inside Dhaka</b><em id="chD"></em></span></label>
+        <label class="opt"><input type="radio" name="area" value="outside"><span><b>Outside Dhaka</b><em id="chO"></em></span></label></div></fieldset>"""
 
 def page_landing(p):
     extra = '<meta name="robots" content="noindex, nofollow">'
@@ -359,13 +408,7 @@ def page_landing(p):
   <div class="sec-head"><span class="eyebrow">Secure checkout</span><h2>Order now</h2><p>Delivering to Bangladesh. Fill in your details and we'll call to confirm your size and delivery. Pay in BDT on delivery.</p></div>
   <div class="co-grid">
     <form id="orderForm" novalidate>
-      <div class="fld"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" required><small class="err"></small></div>
-      <div class="fld"><label for="f-phone">Mobile number</label><input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX" required><small class="err"></small></div>
-      <div class="fld"><label for="f-country">Country</label><div class="country"><span class="cc-code">BD</span><input id="f-country" name="country" value="Bangladesh" readonly aria-readonly="true"></div><small class="fine">We currently deliver to Bangladesh.</small></div>
-      <div class="fld"><label for="f-addr">Full address</label><textarea id="f-addr" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area, thana, district" required></textarea><small class="err"></small></div>
-      <fieldset class="fld"><legend>Delivery area</legend>
-        <div class="opts"><label class="opt"><input type="radio" name="area" value="dhaka" checked><span><b>Inside Dhaka</b><em id="chD"></em></span></label>
-        <label class="opt"><input type="radio" name="area" value="outside"><span><b>Outside Dhaka</b><em id="chO"></em></span></label></div></fieldset>
+      {contact_fields()}
       <fieldset class="fld"><legend>Shoe size (EU) <a href="#sizes" class="lnk">Size guide</a></legend>
         <div class="szs">{sizes}</div><small class="err" id="sizeErr"></small></fieldset>
       <div class="fld inl"><label>Quantity</label><div class="qty"><button type="button" id="qm" aria-label="Decrease">−</button><output id="qv">1</output><button type="button" id="qp" aria-label="Increase">+</button></div></div>
@@ -390,7 +433,8 @@ def page_landing(p):
     h += lp_footer()
     write(lp_url(p), rebase(h, "../"))
 
-def page_pdp(p):
+def page_pdp(p, generic=False):
+    GEN = ' data-generic="1"' if generic else ''
     """Regular e-commerce product page: choose size, add to cart."""
     url = BASE + store_url(p)
     ld = {"@context": "https://schema.org", "@type": "Product", "name": f"Babyglee Bounce — {p['name']}", "image": BASE + f"img/{p['img']}.webp",
@@ -401,7 +445,7 @@ def page_pdp(p):
     h += header("shop")
     sizes = "".join(f'<label class="szc"><input type="radio" name="size" value="{n}"><span>{n}</span></label>' for n in range(21, 37))
     h += f'''<div class="wrap crumbs"><a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <span>Bounce — {p["name"]}</span></div>
-<section class="pdp" id="pdp" data-slug="{p["slug"]}">
+<section class="pdp" id="pdp" data-slug="{p["slug"]}"{GEN}>
   <div class="wrap pdp-in">
     <div class="pdp-stage tilt-stage" id="stage"><div class="disc"></div><img class="shoe" data-depth="50" src="img/{p["img"]}.webp" alt="Babyglee Bounce sneakers — {p["name"]}" fetchpriority="high"><span class="badge">Save {round((LIST-PRICE)/LIST*100)}%</span></div>
     <div class="pdp-info">
@@ -411,7 +455,7 @@ def page_pdp(p):
       <p class="pl">Price for Bangladesh (BDT)</p>
       <div class="price-tag lg"><s>{fmt(LIST)}</s><b>{fmt(PRICE)}</b><span>You save {fmt(LIST-PRICE)}</span></div>
       <p class="usd-note">International price: <b>US${PRICE_USD}</b> <span>USD price is shown for reference. You pay in BDT on delivery.</span></p>
-      <fieldset class="fld pdp-sizes"><legend>Select size (EU) <a href="#sizes" class="lnk">Size guide</a></legend>
+      <fieldset class="fld pdp-sizes"><legend>Select size (EU) <button type="button" class="lnk" data-open-size>Size guide</button></legend>
         <div class="szs" id="pdpSizes">{sizes}</div><small class="err" id="sizeErr"></small></fieldset>
       <div class="buy-row"><div class="qty"><button type="button" id="qm" aria-label="Decrease quantity">−</button><output id="qv">1</output><button type="button" id="qp" aria-label="Increase quantity">+</button></div>
         <button class="btn lg" type="button" id="addBtn">{ic("bag")} Add to cart</button></div>
@@ -429,14 +473,20 @@ def page_pdp(p):
 {trust_strip()}
 <section class="sec alt"><div class="wrap">
   <div class="sec-head"><span class="eyebrow">Built for little feet</span><h2>Why parents love the Bounce</h2></div>{feature_cards()}</div></section>
-<section class="sec" id="sizes"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">Size guide</span><h2>Choose the right size</h2></div>{size_table()}</div></section>
 <section class="sec alt"><div class="wrap">
   <div class="sec-head"><span class="eyebrow">More colours</span><h2>You may also like</h2></div>
-  <div class="grid">{"".join(card(q) for q in PRODUCTS if q is not p)}</div></div></section>
+  <div class="grid" data-list="related" data-list-name="Related products">{"".join(card(q) for q in PRODUCTS if q is not p)}</div></div></section>
 <section class="sec"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">FAQ</span><h2>Quick answers</h2></div>{faq_block()}</div></section>
 '''
+    h += f'''<div class="pdp-bar" id="pdpBar" aria-label="Quick buy"><div class="pb-p"><s>{fmt(LIST)}</s><b>{fmt(PRICE)}</b></div>
+  <button class="btn" type="button" id="barAdd">Add to cart</button><button class="btn ghost" type="button" id="barBuy">Buy now</button></div>'''
     h += footer()
-    write(store_url(p), h)
+    if generic:
+        h = h.replace('<meta name="theme-color"', '<meta name="robots" content="noindex">\n<meta name="theme-color"', 1)
+        h = re.sub(r'<script type="application/ld\+json">.*?</script>\n?', '', h, count=1, flags=re.S)
+        write("product.html", h)
+    else:
+        write(store_url(p), h)
 
 def page_cart():
     h = head("Your cart — Babyglee", "Review the items in your Babyglee cart.", "cart", extra='<meta name="robots" content="noindex">')
@@ -467,24 +517,18 @@ def page_checkout():
   <div class="co-grid" id="coGrid">
     <form id="coForm" class="co-form" novalidate>
       <h3 class="sum-t">Delivery details</h3>
-      <div class="fld"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" required><small class="err"></small></div>
-      <div class="fld"><label for="f-phone">Mobile number</label><input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX" required><small class="err"></small></div>
-      <div class="fld"><label for="f-country">Country</label><div class="country"><span class="cc-code">BD</span><input id="f-country" name="country" value="Bangladesh" readonly aria-readonly="true"></div><small class="fine">We currently deliver to Bangladesh.</small></div>
-      <div class="fld"><label for="f-addr">Full address</label><textarea id="f-addr" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area, thana, district" required></textarea><small class="err"></small></div>
-      <fieldset class="fld"><legend>Delivery area</legend>
-        <div class="opts"><label class="opt"><input type="radio" name="area" value="dhaka" checked><span><b>Inside Dhaka</b><em id="chD"></em></span></label>
-        <label class="opt"><input type="radio" name="area" value="outside"><span><b>Outside Dhaka</b><em id="chO"></em></span></label></div></fieldset>
+      {contact_fields()}
       <fieldset class="fld"><legend>Payment</legend><div class="opt on-static"><span><b>Cash on Delivery</b><em>Pay in BDT when your parcel arrives</em></span></div></fieldset>
       <p class="err-box" id="sendErr" role="alert" hidden>Sorry, we couldn't place your order. Please check your connection and try again, or call us on {PHONE_DISPLAY}.</p>
-      <button class="btn lg block" type="submit" id="submitBtn">Place order</button>
+      <div class="co-submit"><button class="btn lg block" type="submit" id="submitBtn">Place order</button></div>
       <p class="fine center">{ic("shield")} Your details are used only to deliver your order.</p>
     </form>
-    <aside class="summary" aria-label="Order summary">
-      <h3 class="sum-t">Order summary</h3>
+    <aside class="summary" aria-label="Order summary"><details class="sum-d" id="sumD" open>
+      <summary class="sum-t"><span>Order summary</span><b id="sumTop"></b></summary>
       <div id="coLines"></div>
       <dl><div><dt>Subtotal</dt><dd id="sSub"></dd></div><div><dt>Delivery</dt><dd id="sDel"></dd></div><div class="tot"><dt>Total (COD)</dt><dd id="sTot"></dd></div></dl>
       <p class="fine"><a class="lnk-b" href="cart.html">Edit cart</a> · <a class="lnk-b" href="https://wa.me/{WA}" target="_blank" rel="noopener">Chat on WhatsApp</a></p>
-    </aside>
+    </details></aside>
   </div>
   {done_block(shop=True)}
 </div></section>
@@ -504,7 +548,6 @@ def page_lp_index():
   <p class="fine center">Tip: add tracking to a link with <code>?utm_source=facebook&amp;utm_campaign=name</code> at the end.</p>
 </div></section></main>
 <div class="toast" id="toast" role="status"></div>
-<script src="assets/config.js"></script>
 <script src="assets/main.js"></script>
 </body>
 </html>
@@ -512,7 +555,7 @@ def page_lp_index():
     write("lp/index.html", rebase(h, "../"))
 
 def write_products_js():
-    data = {p["slug"]: {"title": f"Babyglee Bounce — {p['name']}", "name": p["name"], "img": f"img/{p['img']}.webp", "url": store_url(p)} for p in PRODUCTS}
+    data = {p["slug"]: {"title": f"Babyglee Bounce — {p['name']}", "name": p["name"], "img": f"img/{p['img']}.webp", "url": store_url(p), "sku": "BSTD-01-" + p["key"].upper(), "color": p["name"]} for p in PRODUCTS}
     (OUT / "assets" / "products.js").write_text("/* generated by tools/build.py */\nwindow.BG_PRODUCTS = " + json.dumps(data, ensure_ascii=False, indent=1) + ";\n", encoding="utf-8")
 
 def simple_page(fname, title, desc, key, eyebrow, h1, body):
@@ -557,7 +600,7 @@ def page_shipping():
 def page_privacy():
     body = '''<p class="fine">Last updated: 2025</p>
 <p>This policy explains how Babyglee ("we", "us") collects and uses your information when you visit babygleebd.com or place an order.</p>
-<h2>Information we collect</h2><ul><li><b>Order details:</b> your name, mobile number, delivery address, chosen product, size and quantity.</li><li><b>Messages:</b> anything you send us by WhatsApp, phone or email.</li><li><b>Usage data:</b> basic, anonymous information about how the site is used (pages visited, device type), which may be collected through cookies and analytics or advertising tools such as Meta Pixel.</li></ul>
+<h2>Information we collect</h2><ul><li><b>Order details:</b> your name, mobile number, delivery address, chosen product, size and quantity.</li><li><b>Unfinished orders:</b> if you start filling in the checkout form but do not finish, we may save the details you entered (such as your mobile number and chosen product) and contact you to help complete your order.</li><li><b>Messages:</b> anything you send us by WhatsApp, phone or email.</li><li><b>Usage data:</b> basic, anonymous information about how the site is used (pages visited, device type), which may be collected through cookies and analytics or advertising tools such as Meta Pixel.</li></ul>
 <h2>How we use it</h2><ul><li>To confirm, deliver and support your order, including calling or messaging you about size and delivery.</li><li>To handle exchanges and customer service requests.</li><li>To understand how our site and ads perform and to improve them.</li></ul>
 <h2>Sharing</h2><p>We share your name, phone number and address only with courier and delivery partners so your parcel can reach you. We do not sell your personal information.</p>
 <h2>Cookies &amp; advertising</h2><p>We may use cookies and similar technologies, including the Meta Pixel, to measure ad performance and show relevant ads. You can control cookies in your browser settings.</p>
@@ -587,5 +630,6 @@ if __name__ == "__main__":
     page_home(); page_shop(); page_about(); page_contact(); page_shipping(); page_privacy(); page_terms(); page_cart(); page_checkout()
     for p in PRODUCTS:
         page_pdp(p); page_landing(p)
+    page_pdp(PRODUCTS[0], generic=True)   # template for products added later in the admin panel (product.html?p=<slug>)
     page_lp_index(); write_products_js()
     print("built", len(list(OUT.glob("*.html"))), "store pages +", len(list((OUT / "lp").glob("*.html"))), "landing pages")

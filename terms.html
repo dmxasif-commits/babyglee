@@ -15,6 +15,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
+<script src="assets/config.js"></script>
+<script src="assets/products.js"></script>
+<script src="assets/tracking.js"></script>
 
 </head>
 <body data-page="terms">
@@ -35,7 +38,7 @@
       <ul class="sm-l"><li><svg class="ic " aria-hidden="true"><use href="#i-truck"/></svg> Home delivery</li><li><svg class="ic " aria-hidden="true"><use href="#i-cash"/></svg> Cash on Delivery</li><li><svg class="ic " aria-hidden="true"><use href="#i-exchange"/></svg> 72-hour exchange</li></ul>
     </div>
   </div>
-  <button class="cart-btn" id="cartBtn" aria-label="Open cart"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg><i id="cartCount">0</i></button>
+  <button class="cart-btn" id="cartBtn" aria-label="Open cart"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg><i id="cartCount" class="js-cart-count">0</i></button>
   <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false"><svg class="ic " aria-hidden="true"><use href="#i-menu"/></svg></button>
 </div></header>
 <main>
@@ -57,7 +60,7 @@
       <div class="soc"><a href="https://facebook.com/Babyglee.Official" target="_blank" rel="noopener" aria-label="Babyglee on Facebook"><svg class="ic " aria-hidden="true"><use href="#i-facebook"/></svg></a>
       <a href="https://wa.me/8801974974973" target="_blank" rel="noopener" aria-label="WhatsApp"><svg class="ic " aria-hidden="true"><use href="#i-whatsapp"/></svg></a></div>
     </div>
-    <div><h4>Shop</h4><a href="product-sky-blue.html">Bounce — Sky Blue</a><a href="product-blue-beige.html">Bounce — Blue & Beige</a><a href="product-grey.html">Bounce — Grey</a><a href="product-navy-brown.html">Bounce — Navy & Brown</a><a href="product-black.html">Bounce — Black</a></div>
+    <div id="ftShop"><h4>Shop</h4><a href="product-sky-blue.html">Bounce — Sky Blue</a><a href="product-blue-beige.html">Bounce — Blue & Beige</a><a href="product-grey.html">Bounce — Grey</a><a href="product-navy-brown.html">Bounce — Navy & Brown</a><a href="product-black.html">Bounce — Black</a></div>
     <div><h4>Company</h4><a href="about.html">About us</a><a href="contact.html">Contact us</a><a href="shipping-returns.html">Shipping &amp; returns</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms &amp; conditions</a></div>
     <div><h4>Get in touch</h4>
       <a href="https://wa.me/8801974974973"><svg class="ic " aria-hidden="true"><use href="#i-whatsapp"/></svg> +880 1974-974973</a>
@@ -68,6 +71,37 @@
   </div>
   <div class="wrap ftr-bottom"><span>© 2025 Babyglee® — A concern of AMC Knit Composite Ltd.</span><span>Trademark Reg. No. 210926 (Class 25) · Trade licence TRAD/DNCC/090476/2022</span></div>
 </footer>
+<a class="fab fab-wa" id="waFab" href="https://wa.me/8801974974973" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp"><svg class="ic " aria-hidden="true"><use href="#i-whatsapp"/></svg></a>
+<button class="fab fab-cart" id="cartFab" type="button" aria-label="Open cart"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg><i class="js-cart-count">0</i></button>
+<div class="sheet-wrap" id="sizeModal" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="szTitle">
+    <header><h3 id="szTitle">Size guide</h3><button class="icon-btn" type="button" data-close aria-label="Close size guide"><svg class="ic " aria-hidden="true"><use href="#i-close"/></svg></button></header>
+    <div class="sheet-body">
+      <p class="sub">Measure your child's foot from heel to longest toe, then slide to match.</p>
+      <label class="sl" for="szCm">Foot length: <b id="szCmOut">14.0</b> cm</label>
+      <input type="range" id="szCm" min="12" max="23" step="0.5" value="14">
+      <div class="size-res"><span>Suggested size</span><b id="szOut">EU 23</b><em id="szAge">≈ 1–2 yrs</em></div>
+      <button class="btn block" type="button" id="szUse" hidden>Select this size</button>
+      <h4 class="sheet-h">All sizes</h4>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Shoe size</th><th>Foot length</th><th>Age (approx.)</th></tr></thead><tbody><tr data-eu="21"><td><b>EU 21</b></td><td>12.5 cm</td><td>≈ 1–2 yrs</td></tr><tr data-eu="22"><td><b>EU 22</b></td><td>13.2 cm</td><td>≈ 1–2 yrs</td></tr><tr data-eu="23"><td><b>EU 23</b></td><td>13.8 cm</td><td>≈ 1–2 yrs</td></tr><tr data-eu="24"><td><b>EU 24</b></td><td>14.5 cm</td><td>≈ 2–4 yrs</td></tr><tr data-eu="25"><td><b>EU 25</b></td><td>15.2 cm</td><td>≈ 2–4 yrs</td></tr><tr data-eu="26"><td><b>EU 26</b></td><td>15.8 cm</td><td>≈ 2–4 yrs</td></tr><tr data-eu="27"><td><b>EU 27</b></td><td>16.5 cm</td><td>≈ 4–6 yrs</td></tr><tr data-eu="28"><td><b>EU 28</b></td><td>17.2 cm</td><td>≈ 4–6 yrs</td></tr><tr data-eu="29"><td><b>EU 29</b></td><td>17.8 cm</td><td>≈ 4–6 yrs</td></tr><tr data-eu="30"><td><b>EU 30</b></td><td>18.5 cm</td><td>≈ 6–8 yrs</td></tr><tr data-eu="31"><td><b>EU 31</b></td><td>19.2 cm</td><td>≈ 6–8 yrs</td></tr><tr data-eu="32"><td><b>EU 32</b></td><td>19.8 cm</td><td>≈ 6–8 yrs</td></tr><tr data-eu="33"><td><b>EU 33</b></td><td>20.5 cm</td><td>≈ 8–10 yrs</td></tr><tr data-eu="34"><td><b>EU 34</b></td><td>21.2 cm</td><td>≈ 8–10 yrs</td></tr><tr data-eu="35"><td><b>EU 35</b></td><td>21.8 cm</td><td>≈ 8–10 yrs</td></tr><tr data-eu="36"><td><b>EU 36</b></td><td>22.5 cm</td><td>≈ 8–10 yrs</td></tr></tbody></table></div><p class="fine">Measure from heel to the longest toe. Sizes are approximate, so our team also confirms the size with you by call or message before shipping.</p>
+    </div>
+  </section>
+</div>
+<div class="sheet-wrap" id="qaSheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="qaTitle">
+    <header><h3 id="qaTitle">Choose your size</h3><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="ic " aria-hidden="true"><use href="#i-close"/></svg></button></header>
+    <div class="sheet-body">
+      <div class="qa-head"><img id="qaImg" src="img/logo.webp" alt=""><div><b id="qaName"></b><div class="price"><s>৳1,800</s> <b>৳1,290</b></div><small class="usd-line">US$15 <span>international price</span></small></div></div>
+      <fieldset class="fld"><legend>Select size (EU) <button type="button" class="lnk" data-open-size>Size guide</button></legend>
+        <div class="szs" id="qaSizes"><label class="szc"><input type="radio" name="qasize" value="21"><span>21</span></label><label class="szc"><input type="radio" name="qasize" value="22"><span>22</span></label><label class="szc"><input type="radio" name="qasize" value="23"><span>23</span></label><label class="szc"><input type="radio" name="qasize" value="24"><span>24</span></label><label class="szc"><input type="radio" name="qasize" value="25"><span>25</span></label><label class="szc"><input type="radio" name="qasize" value="26"><span>26</span></label><label class="szc"><input type="radio" name="qasize" value="27"><span>27</span></label><label class="szc"><input type="radio" name="qasize" value="28"><span>28</span></label><label class="szc"><input type="radio" name="qasize" value="29"><span>29</span></label><label class="szc"><input type="radio" name="qasize" value="30"><span>30</span></label><label class="szc"><input type="radio" name="qasize" value="31"><span>31</span></label><label class="szc"><input type="radio" name="qasize" value="32"><span>32</span></label><label class="szc"><input type="radio" name="qasize" value="33"><span>33</span></label><label class="szc"><input type="radio" name="qasize" value="34"><span>34</span></label><label class="szc"><input type="radio" name="qasize" value="35"><span>35</span></label><label class="szc"><input type="radio" name="qasize" value="36"><span>36</span></label></div><small class="err" id="qaErr"></small></fieldset>
+      <div class="buy-row"><div class="qty"><button type="button" id="qaQm" aria-label="Decrease quantity">−</button><output id="qaQv">1</output><button type="button" id="qaQp" aria-label="Increase quantity">+</button></div>
+        <button class="btn lg" type="button" id="qaAdd"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg> Add to cart</button></div>
+      <button class="btn ghost lg block" type="button" id="qaBuy">Buy now</button>
+    </div>
+  </section>
+</div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Shopping cart" aria-hidden="true">
   <header><h3>Your cart</h3><button class="icon-btn" id="closeCart" aria-label="Close cart"><svg class="ic " aria-hidden="true"><use href="#i-close"/></svg></button></header>
@@ -77,8 +111,6 @@
     <small>Delivery is calculated at checkout · Cash on Delivery</small></footer>
 </aside>
 <div class="toast" id="toast" role="status"></div>
-<script src="assets/config.js"></script>
-<script src="assets/products.js"></script>
 <script src="assets/main.js"></script>
 </body>
 </html>

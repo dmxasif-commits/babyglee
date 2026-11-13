@@ -15,6 +15,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
+<script src="assets/config.js"></script>
+<script src="assets/products.js"></script>
+<script src="assets/tracking.js"></script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "Babyglee Bounce \u2014 Blue & Beige", "image": "https://dmxasif-commits.github.io/babyglee/img/blue-beige.webp", "brand": {"@type": "Brand", "name": "Babyglee"}, "description": "Kids' casual sneaker with breathable mesh upper, velcro strap and anti-slip shock-absorbing sole.", "offers": {"@type": "Offer", "eligibleRegion": "BD", "url": "https://dmxasif-commits.github.io/babyglee/product-blue-beige.html", "priceCurrency": "BDT", "price": "1290", "availability": "https://schema.org/InStock"}}</script>
 </head>
 <body data-page="pdp">
@@ -35,7 +38,7 @@
       <ul class="sm-l"><li><svg class="ic " aria-hidden="true"><use href="#i-truck"/></svg> Home delivery</li><li><svg class="ic " aria-hidden="true"><use href="#i-cash"/></svg> Cash on Delivery</li><li><svg class="ic " aria-hidden="true"><use href="#i-exchange"/></svg> 72-hour exchange</li></ul>
     </div>
   </div>
-  <button class="cart-btn" id="cartBtn" aria-label="Open cart"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg><i id="cartCount">0</i></button>
+  <button class="cart-btn" id="cartBtn" aria-label="Open cart"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg><i id="cartCount" class="js-cart-count">0</i></button>
   <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false"><svg class="ic " aria-hidden="true"><use href="#i-menu"/></svg></button>
 </div></header>
 <main>
@@ -50,7 +53,7 @@
       <p class="pl">Price for Bangladesh (BDT)</p>
       <div class="price-tag lg"><s>৳1,800</s><b>৳1,290</b><span>You save ৳510</span></div>
       <p class="usd-note">International price: <b>US$15</b> <span>USD price is shown for reference. You pay in BDT on delivery.</span></p>
-      <fieldset class="fld pdp-sizes"><legend>Select size (EU) <a href="#sizes" class="lnk">Size guide</a></legend>
+      <fieldset class="fld pdp-sizes"><legend>Select size (EU) <button type="button" class="lnk" data-open-size>Size guide</button></legend>
         <div class="szs" id="pdpSizes"><label class="szc"><input type="radio" name="size" value="21"><span>21</span></label><label class="szc"><input type="radio" name="size" value="22"><span>22</span></label><label class="szc"><input type="radio" name="size" value="23"><span>23</span></label><label class="szc"><input type="radio" name="size" value="24"><span>24</span></label><label class="szc"><input type="radio" name="size" value="25"><span>25</span></label><label class="szc"><input type="radio" name="size" value="26"><span>26</span></label><label class="szc"><input type="radio" name="size" value="27"><span>27</span></label><label class="szc"><input type="radio" name="size" value="28"><span>28</span></label><label class="szc"><input type="radio" name="size" value="29"><span>29</span></label><label class="szc"><input type="radio" name="size" value="30"><span>30</span></label><label class="szc"><input type="radio" name="size" value="31"><span>31</span></label><label class="szc"><input type="radio" name="size" value="32"><span>32</span></label><label class="szc"><input type="radio" name="size" value="33"><span>33</span></label><label class="szc"><input type="radio" name="size" value="34"><span>34</span></label><label class="szc"><input type="radio" name="size" value="35"><span>35</span></label><label class="szc"><input type="radio" name="size" value="36"><span>36</span></label></div><small class="err" id="sizeErr"></small></fieldset>
       <div class="buy-row"><div class="qty"><button type="button" id="qm" aria-label="Decrease quantity">−</button><output id="qv">1</output><button type="button" id="qp" aria-label="Increase quantity">+</button></div>
         <button class="btn lg" type="button" id="addBtn"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg> Add to cart</button></div>
@@ -68,36 +71,40 @@
 <section class="trust"><div class="wrap trust-grid"><div class="tr"><svg class="ic " aria-hidden="true"><use href="#i-cash"/></svg><div><b>Cash on Delivery</b><span>Pay when it arrives</span></div></div><div class="tr"><svg class="ic " aria-hidden="true"><use href="#i-truck"/></svg><div><b>Fast home delivery</b><span>Across Bangladesh</span></div></div><div class="tr"><svg class="ic " aria-hidden="true"><use href="#i-exchange"/></svg><div><b>72-hour exchange</b><span>Easy size swaps</span></div></div><div class="tr"><svg class="ic " aria-hidden="true"><use href="#i-shield"/></svg><div><b>Kid-safe materials</b><span>REACH-compliant</span></div></div></div></section>
 <section class="sec alt"><div class="wrap">
   <div class="sec-head"><span class="eyebrow">Built for little feet</span><h2>Why parents love the Bounce</h2></div><div class="feat-grid"><article class="feat tilt"><span class="ficon"><svg class="ic " aria-hidden="true"><use href="#i-layers"/></svg></span><h3>Multi-density sole</h3><p>Cushions every step and helps protect growing joints.</p></article><article class="feat tilt"><span class="ficon"><svg class="ic " aria-hidden="true"><use href="#i-cushion"/></svg></span><h3>Memory-foam insole</h3><p>Soft Ortholite-style insole for all-day comfort.</p></article><article class="feat tilt"><span class="ficon"><svg class="ic " aria-hidden="true"><use href="#i-expand"/></svg></span><h3>Wide toe box</h3><p>Shaped around natural foot development.</p></article><article class="feat tilt"><span class="ficon"><svg class="ic " aria-hidden="true"><use href="#i-bolt"/></svg></span><h3>Fast-lock strap</h3><p>Velcro strap with stretch bands, so kids can put them on alone.</p></article><article class="feat tilt"><span class="ficon"><svg class="ic " aria-hidden="true"><use href="#i-grid"/></svg></span><h3>Anti-slip rubber tread</h3><p>Shock-absorbing grip for playgrounds, courts and parks.</p></article><article class="feat tilt"><span class="ficon"><svg class="ic " aria-hidden="true"><use href="#i-shield"/></svg></span><h3>Safe materials</h3><p>Microfiber leather and breathable mesh; REACH, phthalate and azo-dye limits.</p></article></div></div></section>
-<section class="sec" id="sizes"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">Size guide</span><h2>Choose the right size</h2></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Shoe size</th><th>Foot length</th><th>Age (approx.)</th></tr></thead><tbody><tr><td><b>EU 21</b></td><td>12.5 cm</td><td>≈ 1–2 yrs</td></tr><tr><td><b>EU 22</b></td><td>13.2 cm</td><td>≈ 1–2 yrs</td></tr><tr><td><b>EU 23</b></td><td>13.8 cm</td><td>≈ 1–2 yrs</td></tr><tr><td><b>EU 24</b></td><td>14.5 cm</td><td>≈ 2–4 yrs</td></tr><tr><td><b>EU 25</b></td><td>15.2 cm</td><td>≈ 2–4 yrs</td></tr><tr><td><b>EU 26</b></td><td>15.8 cm</td><td>≈ 2–4 yrs</td></tr><tr><td><b>EU 27</b></td><td>16.5 cm</td><td>≈ 4–6 yrs</td></tr><tr><td><b>EU 28</b></td><td>17.2 cm</td><td>≈ 4–6 yrs</td></tr><tr><td><b>EU 29</b></td><td>17.8 cm</td><td>≈ 4–6 yrs</td></tr><tr><td><b>EU 30</b></td><td>18.5 cm</td><td>≈ 6–8 yrs</td></tr><tr><td><b>EU 31</b></td><td>19.2 cm</td><td>≈ 6–8 yrs</td></tr><tr><td><b>EU 32</b></td><td>19.8 cm</td><td>≈ 6–8 yrs</td></tr><tr><td><b>EU 33</b></td><td>20.5 cm</td><td>≈ 8–10 yrs</td></tr><tr><td><b>EU 34</b></td><td>21.2 cm</td><td>≈ 8–10 yrs</td></tr><tr><td><b>EU 35</b></td><td>21.8 cm</td><td>≈ 8–10 yrs</td></tr><tr><td><b>EU 36</b></td><td>22.5 cm</td><td>≈ 8–10 yrs</td></tr></tbody></table></div><p class="fine">Measure from heel to the longest toe. Sizes are approximate, so our team also confirms the size with you by call or message before shipping.</p></div></section>
 <section class="sec alt"><div class="wrap">
   <div class="sec-head"><span class="eyebrow">More colours</span><h2>You may also like</h2></div>
-  <div class="grid"><a class="pcard" href="product-sky-blue.html">
-  <div class="pic"><img src="img/sky-blue-yellow.webp" alt="Babyglee Bounce sneaker — Sky Blue & Yellow" loading="lazy"></div>
-  <div class="pbody"><span class="sw" style="background:#3fb4e8"></span><h3>Bounce — Sky Blue & Yellow</h3>
+  <div class="grid" data-list="related" data-list-name="Related products"><article class="pcard" data-slug="bounce-sky-blue">
+  <a class="pic" href="product-sky-blue.html" data-select><img src="img/sky-blue-yellow.webp" alt="Babyglee Bounce sneaker — Sky Blue & Yellow" loading="lazy"></a>
+  <div class="pbody"><span class="sw" style="background:#3fb4e8"></span><a class="pt" href="product-sky-blue.html" data-select><h3>Bounce — Sky Blue & Yellow</h3></a>
   <p class="pmeta">Kids' casual sneaker · EU 21–36</p>
-  <div class="prow"><span class="price"><s>৳1,800</s> <b>৳1,290</b></span><span class="go">View &amp; order →</span></div>
-  <p class="usd-line">US$15 <span>international price</span></p></div>
-</a><a class="pcard" href="product-grey.html">
-  <div class="pic"><img src="img/grey.webp" alt="Babyglee Bounce sneaker — Grey" loading="lazy"></div>
-  <div class="pbody"><span class="sw" style="background:#8a9096"></span><h3>Bounce — Grey</h3>
+  <div class="prow"><span class="price"><s>৳1,800</s> <b>৳1,290</b></span></div>
+  <p class="usd-line">US$15 <span>international price</span></p>
+  <button class="btn sm block qa" type="button" data-qa="bounce-sky-blue"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg> Quick add</button></div>
+</article><article class="pcard" data-slug="bounce-grey">
+  <a class="pic" href="product-grey.html" data-select><img src="img/grey.webp" alt="Babyglee Bounce sneaker — Grey" loading="lazy"></a>
+  <div class="pbody"><span class="sw" style="background:#8a9096"></span><a class="pt" href="product-grey.html" data-select><h3>Bounce — Grey</h3></a>
   <p class="pmeta">Kids' casual sneaker · EU 21–36</p>
-  <div class="prow"><span class="price"><s>৳1,800</s> <b>৳1,290</b></span><span class="go">View &amp; order →</span></div>
-  <p class="usd-line">US$15 <span>international price</span></p></div>
-</a><a class="pcard" href="product-navy-brown.html">
-  <div class="pic"><img src="img/navy-brown.webp" alt="Babyglee Bounce sneaker — Navy & Brown" loading="lazy"></div>
-  <div class="pbody"><span class="sw" style="background:#26335a"></span><h3>Bounce — Navy & Brown</h3>
+  <div class="prow"><span class="price"><s>৳1,800</s> <b>৳1,290</b></span></div>
+  <p class="usd-line">US$15 <span>international price</span></p>
+  <button class="btn sm block qa" type="button" data-qa="bounce-grey"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg> Quick add</button></div>
+</article><article class="pcard" data-slug="bounce-navy-brown">
+  <a class="pic" href="product-navy-brown.html" data-select><img src="img/navy-brown.webp" alt="Babyglee Bounce sneaker — Navy & Brown" loading="lazy"></a>
+  <div class="pbody"><span class="sw" style="background:#26335a"></span><a class="pt" href="product-navy-brown.html" data-select><h3>Bounce — Navy & Brown</h3></a>
   <p class="pmeta">Kids' casual sneaker · EU 21–36</p>
-  <div class="prow"><span class="price"><s>৳1,800</s> <b>৳1,290</b></span><span class="go">View &amp; order →</span></div>
-  <p class="usd-line">US$15 <span>international price</span></p></div>
-</a><a class="pcard" href="product-black.html">
-  <div class="pic"><img src="img/black.webp" alt="Babyglee Bounce sneaker — Black" loading="lazy"></div>
-  <div class="pbody"><span class="sw" style="background:#262626"></span><h3>Bounce — Black</h3>
+  <div class="prow"><span class="price"><s>৳1,800</s> <b>৳1,290</b></span></div>
+  <p class="usd-line">US$15 <span>international price</span></p>
+  <button class="btn sm block qa" type="button" data-qa="bounce-navy-brown"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg> Quick add</button></div>
+</article><article class="pcard" data-slug="bounce-black">
+  <a class="pic" href="product-black.html" data-select><img src="img/black.webp" alt="Babyglee Bounce sneaker — Black" loading="lazy"></a>
+  <div class="pbody"><span class="sw" style="background:#262626"></span><a class="pt" href="product-black.html" data-select><h3>Bounce — Black</h3></a>
   <p class="pmeta">Kids' casual sneaker · EU 21–36</p>
-  <div class="prow"><span class="price"><s>৳1,800</s> <b>৳1,290</b></span><span class="go">View &amp; order →</span></div>
-  <p class="usd-line">US$15 <span>international price</span></p></div>
-</a></div></div></section>
+  <div class="prow"><span class="price"><s>৳1,800</s> <b>৳1,290</b></span></div>
+  <p class="usd-line">US$15 <span>international price</span></p>
+  <button class="btn sm block qa" type="button" data-qa="bounce-black"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg> Quick add</button></div>
+</article></div></div></section>
 <section class="sec"><div class="wrap narrow"><div class="sec-head"><span class="eyebrow">FAQ</span><h2>Quick answers</h2></div><div class="faq"><details><summary>How does delivery work?</summary><p>We deliver to your home across the areas we serve. Our team calls or messages you to confirm your size and address before shipping.</p></details><details><summary>Can I pay on delivery?</summary><p>Yes. Cash on Delivery is available on every order.</p></details><details><summary>What if the size doesn't fit?</summary><p>You can exchange within 72 hours of delivery. Delivery and return charges apply. See our Shipping &amp; Returns page.</p></details><details><summary>Which sizes do you have?</summary><p>The Bounce series is available in EU sizes 21 to 36, suitable for roughly ages 1 to 10.</p></details><details><summary>Are the shoes safe for kids?</summary><p>They are made from microfiber synthetic leather and breathable mesh, with chemical limits for REACH, phthalates and azo dyes.</p></details></div></div></section>
-</main>
+<div class="pdp-bar" id="pdpBar" aria-label="Quick buy"><div class="pb-p"><s>৳1,800</s><b>৳1,290</b></div>
+  <button class="btn" type="button" id="barAdd">Add to cart</button><button class="btn ghost" type="button" id="barBuy">Buy now</button></div></main>
 <footer class="ftr">
   <div class="wrap ftr-grid">
     <div class="ftr-brand">
@@ -106,7 +113,7 @@
       <div class="soc"><a href="https://facebook.com/Babyglee.Official" target="_blank" rel="noopener" aria-label="Babyglee on Facebook"><svg class="ic " aria-hidden="true"><use href="#i-facebook"/></svg></a>
       <a href="https://wa.me/8801974974973" target="_blank" rel="noopener" aria-label="WhatsApp"><svg class="ic " aria-hidden="true"><use href="#i-whatsapp"/></svg></a></div>
     </div>
-    <div><h4>Shop</h4><a href="product-sky-blue.html">Bounce — Sky Blue</a><a href="product-blue-beige.html">Bounce — Blue & Beige</a><a href="product-grey.html">Bounce — Grey</a><a href="product-navy-brown.html">Bounce — Navy & Brown</a><a href="product-black.html">Bounce — Black</a></div>
+    <div id="ftShop"><h4>Shop</h4><a href="product-sky-blue.html">Bounce — Sky Blue</a><a href="product-blue-beige.html">Bounce — Blue & Beige</a><a href="product-grey.html">Bounce — Grey</a><a href="product-navy-brown.html">Bounce — Navy & Brown</a><a href="product-black.html">Bounce — Black</a></div>
     <div><h4>Company</h4><a href="about.html">About us</a><a href="contact.html">Contact us</a><a href="shipping-returns.html">Shipping &amp; returns</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms &amp; conditions</a></div>
     <div><h4>Get in touch</h4>
       <a href="https://wa.me/8801974974973"><svg class="ic " aria-hidden="true"><use href="#i-whatsapp"/></svg> +880 1974-974973</a>
@@ -117,6 +124,37 @@
   </div>
   <div class="wrap ftr-bottom"><span>© 2025 Babyglee® — A concern of AMC Knit Composite Ltd.</span><span>Trademark Reg. No. 210926 (Class 25) · Trade licence TRAD/DNCC/090476/2022</span></div>
 </footer>
+<a class="fab fab-wa" id="waFab" href="https://wa.me/8801974974973" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp"><svg class="ic " aria-hidden="true"><use href="#i-whatsapp"/></svg></a>
+<button class="fab fab-cart" id="cartFab" type="button" aria-label="Open cart"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg><i class="js-cart-count">0</i></button>
+<div class="sheet-wrap" id="sizeModal" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="szTitle">
+    <header><h3 id="szTitle">Size guide</h3><button class="icon-btn" type="button" data-close aria-label="Close size guide"><svg class="ic " aria-hidden="true"><use href="#i-close"/></svg></button></header>
+    <div class="sheet-body">
+      <p class="sub">Measure your child's foot from heel to longest toe, then slide to match.</p>
+      <label class="sl" for="szCm">Foot length: <b id="szCmOut">14.0</b> cm</label>
+      <input type="range" id="szCm" min="12" max="23" step="0.5" value="14">
+      <div class="size-res"><span>Suggested size</span><b id="szOut">EU 23</b><em id="szAge">≈ 1–2 yrs</em></div>
+      <button class="btn block" type="button" id="szUse" hidden>Select this size</button>
+      <h4 class="sheet-h">All sizes</h4>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Shoe size</th><th>Foot length</th><th>Age (approx.)</th></tr></thead><tbody><tr data-eu="21"><td><b>EU 21</b></td><td>12.5 cm</td><td>≈ 1–2 yrs</td></tr><tr data-eu="22"><td><b>EU 22</b></td><td>13.2 cm</td><td>≈ 1–2 yrs</td></tr><tr data-eu="23"><td><b>EU 23</b></td><td>13.8 cm</td><td>≈ 1–2 yrs</td></tr><tr data-eu="24"><td><b>EU 24</b></td><td>14.5 cm</td><td>≈ 2–4 yrs</td></tr><tr data-eu="25"><td><b>EU 25</b></td><td>15.2 cm</td><td>≈ 2–4 yrs</td></tr><tr data-eu="26"><td><b>EU 26</b></td><td>15.8 cm</td><td>≈ 2–4 yrs</td></tr><tr data-eu="27"><td><b>EU 27</b></td><td>16.5 cm</td><td>≈ 4–6 yrs</td></tr><tr data-eu="28"><td><b>EU 28</b></td><td>17.2 cm</td><td>≈ 4–6 yrs</td></tr><tr data-eu="29"><td><b>EU 29</b></td><td>17.8 cm</td><td>≈ 4–6 yrs</td></tr><tr data-eu="30"><td><b>EU 30</b></td><td>18.5 cm</td><td>≈ 6–8 yrs</td></tr><tr data-eu="31"><td><b>EU 31</b></td><td>19.2 cm</td><td>≈ 6–8 yrs</td></tr><tr data-eu="32"><td><b>EU 32</b></td><td>19.8 cm</td><td>≈ 6–8 yrs</td></tr><tr data-eu="33"><td><b>EU 33</b></td><td>20.5 cm</td><td>≈ 8–10 yrs</td></tr><tr data-eu="34"><td><b>EU 34</b></td><td>21.2 cm</td><td>≈ 8–10 yrs</td></tr><tr data-eu="35"><td><b>EU 35</b></td><td>21.8 cm</td><td>≈ 8–10 yrs</td></tr><tr data-eu="36"><td><b>EU 36</b></td><td>22.5 cm</td><td>≈ 8–10 yrs</td></tr></tbody></table></div><p class="fine">Measure from heel to the longest toe. Sizes are approximate, so our team also confirms the size with you by call or message before shipping.</p>
+    </div>
+  </section>
+</div>
+<div class="sheet-wrap" id="qaSheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="qaTitle">
+    <header><h3 id="qaTitle">Choose your size</h3><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="ic " aria-hidden="true"><use href="#i-close"/></svg></button></header>
+    <div class="sheet-body">
+      <div class="qa-head"><img id="qaImg" src="img/logo.webp" alt=""><div><b id="qaName"></b><div class="price"><s>৳1,800</s> <b>৳1,290</b></div><small class="usd-line">US$15 <span>international price</span></small></div></div>
+      <fieldset class="fld"><legend>Select size (EU) <button type="button" class="lnk" data-open-size>Size guide</button></legend>
+        <div class="szs" id="qaSizes"><label class="szc"><input type="radio" name="qasize" value="21"><span>21</span></label><label class="szc"><input type="radio" name="qasize" value="22"><span>22</span></label><label class="szc"><input type="radio" name="qasize" value="23"><span>23</span></label><label class="szc"><input type="radio" name="qasize" value="24"><span>24</span></label><label class="szc"><input type="radio" name="qasize" value="25"><span>25</span></label><label class="szc"><input type="radio" name="qasize" value="26"><span>26</span></label><label class="szc"><input type="radio" name="qasize" value="27"><span>27</span></label><label class="szc"><input type="radio" name="qasize" value="28"><span>28</span></label><label class="szc"><input type="radio" name="qasize" value="29"><span>29</span></label><label class="szc"><input type="radio" name="qasize" value="30"><span>30</span></label><label class="szc"><input type="radio" name="qasize" value="31"><span>31</span></label><label class="szc"><input type="radio" name="qasize" value="32"><span>32</span></label><label class="szc"><input type="radio" name="qasize" value="33"><span>33</span></label><label class="szc"><input type="radio" name="qasize" value="34"><span>34</span></label><label class="szc"><input type="radio" name="qasize" value="35"><span>35</span></label><label class="szc"><input type="radio" name="qasize" value="36"><span>36</span></label></div><small class="err" id="qaErr"></small></fieldset>
+      <div class="buy-row"><div class="qty"><button type="button" id="qaQm" aria-label="Decrease quantity">−</button><output id="qaQv">1</output><button type="button" id="qaQp" aria-label="Increase quantity">+</button></div>
+        <button class="btn lg" type="button" id="qaAdd"><svg class="ic " aria-hidden="true"><use href="#i-bag"/></svg> Add to cart</button></div>
+      <button class="btn ghost lg block" type="button" id="qaBuy">Buy now</button>
+    </div>
+  </section>
+</div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Shopping cart" aria-hidden="true">
   <header><h3>Your cart</h3><button class="icon-btn" id="closeCart" aria-label="Close cart"><svg class="ic " aria-hidden="true"><use href="#i-close"/></svg></button></header>
@@ -126,8 +164,6 @@
     <small>Delivery is calculated at checkout · Cash on Delivery</small></footer>
 </aside>
 <div class="toast" id="toast" role="status"></div>
-<script src="assets/config.js"></script>
-<script src="assets/products.js"></script>
 <script src="assets/main.js"></script>
 </body>
 </html>
