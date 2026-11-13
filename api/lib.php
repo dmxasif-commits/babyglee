@@ -41,9 +41,11 @@ function db(): PDO {
 }
 
 function migrate(PDO $pdo, bool $sqlite): void {
+    $ai = $sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT AUTO_INCREMENT PRIMARY KEY';
+    $eng = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
     $ver = 0;
     try { $ver = (int) $pdo->query("SELECT v FROM settings WHERE k = 'schema_version'")->fetchColumn(); } catch (Throwable $e) { /* first run */ }
-    if ($ver >= 2) return;
+    if ($ver >= 4) return;
     if ($ver < 1) {
     $ai = $sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT AUTO_INCREMENT PRIMARY KEY';
     $eng = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
@@ -74,7 +76,22 @@ function migrate(PDO $pdo, bool $sqlite): void {
         "ALTER TABLE orders ADD COLUMN courier VARCHAR(60) NOT NULL DEFAULT ''", "ALTER TABLE orders ADD COLUMN tracking_code VARCHAR(80) NOT NULL DEFAULT ''"] as $q) {
         try { $pdo->exec($q); } catch (Throwable $e) { /* column already exists */ }
     }
-    set_setting('schema_version', '2');
+    /* version 3: size variations with their own stock */
+    $pdo->exec("CREATE TABLE IF NOT EXISTS variants (product_id INT NOT NULL, size INT NOT NULL, stock INT NOT NULL DEFAULT 0, PRIMARY KEY (product_id, size))" . ($sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'));
+    foreach (["ALTER TABLE products ADD COLUMN track_stock TINYINT NOT NULL DEFAULT 0", "ALTER TABLE orders ADD COLUMN stock_held TINYINT NOT NULL DEFAULT 0"] as $q) {
+        try { $pdo->exec($q); } catch (Throwable $e) { /* column already exists */ }
+    }
+    $has = $pdo->prepare('SELECT COUNT(*) FROM variants WHERE product_id = ?'); $ins = $pdo->prepare('INSERT INTO variants (product_id, size, stock) VALUES (?, ?, 0)');
+    foreach ($pdo->query('SELECT id, sizes FROM products')->fetchAll() as $r) {
+        $has->execute([$r['id']]); if ((int) $has->fetchColumn()) continue;
+        foreach (array_unique(array_filter(array_map('intval', explode(',', (string) $r['sizes'])))) as $s) $ins->execute([$r['id'], $s]);
+    }
+    /* version 4: incomplete orders (checkout started, not finished) */
+    $pdo->exec("CREATE TABLE IF NOT EXISTS leads (id $ai, token VARCHAR(40) NOT NULL UNIQUE, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'new',
+        source VARCHAR(20) NOT NULL DEFAULT 'store', name VARCHAR(120) NOT NULL DEFAULT '', phone VARCHAR(20) NOT NULL, email VARCHAR(160) NOT NULL DEFAULT '', district VARCHAR(60) NOT NULL DEFAULT '',
+        address TEXT, area VARCHAR(30) NOT NULL DEFAULT '', items TEXT, tracking TEXT, ip VARCHAR(45) NOT NULL DEFAULT '', note TEXT)$eng");
+    try { $pdo->exec('CREATE INDEX idx_leads_phone ON leads (phone)'); } catch (Throwable $e) { /* index already exists */ }
+    set_setting('schema_version', '4');
 }
 
 function now(): string { return date('Y-m-d H:i:s'); }
@@ -97,8 +114,35 @@ function set_setting(string $k, string $v): void {
 function products(bool $activeOnly = true): array {
     $rows = db()->query('SELECT * FROM products' . ($activeOnly ? ' WHERE active = 1' : '') . ' ORDER BY sort, id')->fetchAll();
     $out = [];
-    foreach ($rows as $r) { $r['size_list'] = array_values(array_filter(array_map('intval', explode(',', $r['sizes'])))); $out[$r['slug']] = $r; }
+    $vars = [];
+    foreach (db()->query('SELECT product_id, size, stock FROM variants ORDER BY size') as $v) $vars[(int) $v['product_id']][(int) $v['size']] = (int) $v['stock'];
+    foreach ($rows as $r) {
+        $r['variants'] = $vars[(int) $r['id']] ?? [];                 // size => pairs in stock
+        $r['track'] = (int) ($r['track_stock'] ?? 0) === 1;           // false = stock is not counted (always available)
+        $r['size_list'] = array_keys($r['variants']);
+        $out[$r['slug']] = $r;
+    }
     return $out;
+}
+
+/* Adds (+1) or removes (-1) the pairs of an order from stock, for products that count stock. */
+function stock_apply(PDO $pdo, array $items, int $dir): void {
+    $find = $pdo->prepare('SELECT id, track_stock FROM products WHERE slug = ?');
+    $upd = $pdo->prepare('UPDATE variants SET stock = stock + ? WHERE product_id = ? AND size = ?');
+    foreach ($items as $i) {
+        $find->execute([(string) ($i['slug'] ?? '')]); $p = $find->fetch();
+        if ($p && (int) $p['track_stock'] === 1) $upd->execute([$dir * (int) $i['qty'], $p['id'], (int) $i['size']]);
+    }
+}
+
+/* Keeps stock in step with the order status: cancelled / returned orders give their pairs back; re-opened orders take them again. */
+function order_stock_sync(PDO $pdo, string $id, string $status): void {
+    $st = $pdo->prepare('SELECT items, stock_held FROM orders WHERE id = ?'); $st->execute([$id]); $o = $st->fetch();
+    if (!$o) return;
+    $want = in_array($status, ['cancelled', 'returned'], true) ? 0 : 1;
+    if ($want === (int) $o['stock_held']) return;
+    stock_apply($pdo, json_decode((string) $o['items'], true) ?: [], $want ? -1 : 1);
+    $pdo->prepare('UPDATE orders SET stock_held = ? WHERE id = ?')->execute([$want, $id]);
 }
 
 function client_ip(): string { return substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45); }

@@ -33,6 +33,16 @@ GitHub Pages: Settings → Pages → Deploy from branch → `main` / root.
 ## Changelog
 Newest first. Every change is recorded here (see `CLAUDE.md`).
 
+### 2026-11-14: size variations with stock, incomplete orders, Bangladesh phone field
+- **Backup first:** `backups/site-2026-11-14-before-variations.zip`.
+- **Size variations and stock** (Admin → product): one row per size with its own stock, add or remove any size (EU 10–60), and a "Count stock" switch per product.
+  With counting on, orders take pairs out of stock, sold-out sizes are crossed out on the website and refused by the server, cancelled / returned orders put pairs back, and the dashboard warns about low stock. With counting off, every listed size can always be ordered.
+- **Incomplete orders** (Admin → Incomplete, `api/lead.php`): as soon as a visitor types a valid mobile number at checkout or on a landing page, what they typed is saved. It disappears when they finish the order. The team can confirm it (it becomes a normal confirmed order), cancel it (it stays under Incomplete → Cancelled), move it back, or delete it.
+- **Phone field:** fixed `BD +88` prefix, digits only, starts with 0, stops at 11 digits; a pasted `+8801…` number is converted.
+- **Privacy policy** now says that details typed into an unfinished checkout may be saved and used to contact the customer.
+- **Database:** upgrades itself to version 4 (new tables `variants`, `leads`; new columns `products.track_stock`, `orders.stock_held`). Existing sizes are kept; stock counting starts switched off.
+- Files: `api/lib.php`, `api/order.php`, `api/live.php`, `api/lead.php`, `admin/index.php`, `admin/admin.css`, `assets/main.js`, `assets/style.css`, `tools/build.py`, generated pages, `docs/backend-setup.md`.
+
 ### 2026-11-14: invoices, stickers, purchase price and profit, ads (UTM) analytics
 - **Backup first:** `backups/site-2026-11-14-before-invoices.zip`.
 - **A4 invoice and 3 × 4 inch courier sticker** (`admin/index.php?p=print`, `admin/print.css`): address, product details, COD amount, courier and tracking ID; print one order or many at once.

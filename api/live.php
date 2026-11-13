@@ -13,7 +13,9 @@ if (($_GET['f'] ?? '') === 'products') {
     $out = [];
     foreach ($products as $slug => $p) {
         $out[$slug] = ['title' => $p['name'], 'name' => $p['color'] !== '' ? $p['color'] : $p['name'], 'img' => $p['img'], 'sku' => $p['sku'], 'color' => $p['color'], 'colorHex' => $p['color_hex'],
-            'url' => $p['page'] !== '' ? $p['page'] : 'product.html?p=' . rawurlencode($slug), 'price' => (int) $p['price'], 'listPrice' => (int) $p['list_price'], 'priceUsd' => (int) $p['price_usd'], 'sizes' => $p['size_list']];
+            'url' => $p['page'] !== '' ? $p['page'] : 'product.html?p=' . rawurlencode($slug), 'price' => (int) $p['price'], 'listPrice' => (int) $p['list_price'], 'priceUsd' => (int) $p['price_usd'], 'sizes' => $p['size_list'],
+            'out' => $p['track'] ? array_keys(array_filter($p['variants'], fn($q) => $q <= 0)) : [],
+            'low' => $p['track'] ? (object) array_filter($p['variants'], fn($q) => $q > 0 && $q <= 3) : new stdClass()];
     }
     echo "/* live from database */\nwindow.BG_PRODUCTS = " . json_encode((object) $out, $flags) . ";\n";
     exit;
@@ -28,7 +30,7 @@ $config = [
     'WHATSAPP' => setting('whatsapp'),
     'PRICE' => $prices ? min($prices) : 0, 'LIST_PRICE' => $lists ? max($lists) : 0, 'PRICE_USD' => $usd ? max($usd) : 0,
     'DELIVERY' => ['dhaka' => (int) setting('delivery_dhaka'), 'outside' => (int) setting('delivery_outside')],
-    'ORDER_ENDPOINT' => $base . 'api/order.php',
+    'ORDER_ENDPOINT' => $base . 'api/order.php', 'LEAD_ENDPOINT' => $base . 'api/lead.php',
     'GTM_ID' => setting('gtm_id'), 'GTM_SRC' => setting('gtm_src'),
 ];
 echo "/* live from database */\nwindow.BG = " . json_encode($config, $flags) . ";\n";

@@ -42,6 +42,10 @@ Use **HTTPS** (cPanel → SSL/TLS Status → AutoSSL). The admin login cookie is
   In Meta Ads Manager → ad → Tracking → URL parameters, paste:
   `utm_source=facebook&utm_medium=paid&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}`
 - **Courier:** save the courier name and tracking / consignment ID on the order; it prints on the invoice and sticker.
+- **Sizes and stock:** on a product, each size is a row with its own stock. Tick *Count stock for this product* only after typing the real quantities:
+  from then on a size with 0 pairs is sold out on the website. Cancelling or returning an order puts its pairs back.
+- **Incomplete orders:** visitors who typed a valid mobile number but did not finish. Call them, then *Confirm and create order* (fill in address and size) or *Cancel*.
+  Landing pages need a size before the order can be confirmed, so ask the customer on the call.
 - **Backup:** Settings → *Download backup (JSON)*. Do it regularly (it contains customer details, keep it private).
   Also use cPanel → *Backup* for a full database backup.
 

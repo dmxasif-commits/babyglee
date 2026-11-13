@@ -23,15 +23,17 @@ if ($district === '') $errors[] = 'district';
 if (mb_strlen($address) < 10) $errors[] = 'address';
 
 $catalog = products(true);
-$items = []; $subtotal = 0; $cost = 0;
+$items = []; $subtotal = 0; $cost = 0; $stockMsg = '';
 foreach ((array) ($in['items'] ?? []) as $it) {
     if (!is_array($it)) continue;
     $slug = (string) ($it['slug'] ?? ''); $size = (int) ($it['size'] ?? 0); $qty = (int) ($it['qty'] ?? 0);
     if (!isset($catalog[$slug]) || $qty < 1 || $qty > 10 || !in_array($size, $catalog[$slug]['size_list'], true)) { $errors[] = 'items'; continue; }
     $p = $catalog[$slug];
+    if ($p['track'] && $p['variants'][$size] < $qty) { $left = max(0, $p['variants'][$size]); $stockMsg = $stockMsg ?: 'Sorry, ' . $p['name'] . ' in EU ' . $size . ($left ? ' has only ' . $left . ' pair' . ($left > 1 ? 's' : '') . ' left.' : ' is sold out.') . ' Please choose another size or quantity.'; continue; }
     $items[] = ['slug' => $slug, 'sku' => $p['sku'], 'product' => $p['name'], 'size' => $size, 'qty' => $qty, 'price' => (int) $p['price'], 'cost' => (int) ($p['cost'] ?? 0)];
     $subtotal += $qty * (int) $p['price']; $cost += $qty * (int) ($p['cost'] ?? 0);
 }
+if ($stockMsg !== '' && !$errors) json_out(['ok' => false, 'error' => $stockMsg, 'fields' => ['stock']], 409);
 if (!$items || count($items) > 20) $errors[] = 'items';
 if ($errors) json_out(['ok' => false, 'error' => 'Please check: ' . implode(', ', array_unique($errors)), 'fields' => array_values(array_unique($errors))], 422);
 
@@ -64,10 +66,19 @@ if (isset($trIn['meta_user_data']['external_id']) && preg_match('/^[0-9a-f]{64}$
 if (empty($tracking['event_id']) || !preg_match('/^[\w-]{5,80}$/', $tracking['event_id'])) $tracking['event_id'] = 'purchase_' . $id;
 
 $pdo->beginTransaction();
-$pdo->prepare('INSERT INTO orders (id, created_at, status, source, name, phone, email, district, address, area, subtotal, delivery, total, items, tracking, ip, user_agent, note, cost) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+/* Take the pairs out of stock first; if someone else just bought the last pair this fails and nothing is saved. */
+$take = $pdo->prepare('UPDATE variants SET stock = stock - ? WHERE product_id = ? AND size = ? AND stock >= ?');
+foreach ($items as $i) {
+    $p = $catalog[$i['slug']];
+    if (!$p['track']) continue;
+    $take->execute([$i['qty'], $p['id'], $i['size'], $i['qty']]);
+    if ($take->rowCount() !== 1) { $pdo->rollBack(); json_out(['ok' => false, 'error' => 'Sorry, ' . $p['name'] . ' in EU ' . $i['size'] . ' just sold out. Please choose another size.', 'fields' => ['stock']], 409); }
+}
+$pdo->prepare('INSERT INTO orders (id, created_at, status, source, name, phone, email, district, address, area, subtotal, delivery, total, items, tracking, ip, user_agent, note, cost, stock_held) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)')
     ->execute([$id, now(), 'pending', $source, $name, '+' . $phone, $email, $district, $address, $area, $subtotal, $delivery, $total,
         json_encode($items, JSON_UNESCAPED_UNICODE), json_encode($tracking, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $ip, $ua, '', $cost]);
 $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note) VALUES (?,?,?,?)')->execute([$id, now(), 'pending', 'Order placed on website (' . $source . ')']);
+$pdo->prepare('DELETE FROM leads WHERE phone = ?')->execute(['+' . $phone]);   // the order is complete: no longer an incomplete order
 $pdo->commit();
 
 /* Server-side Meta Conversions API Purchase (only when a Pixel ID and token are saved in Admin > Settings). Never blocks the order. */

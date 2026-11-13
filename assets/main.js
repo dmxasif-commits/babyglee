@@ -23,15 +23,19 @@ const priceOf = s => (PR[s] && PR[s].price) || BG.PRICE;
 const listOf = s => (PR[s] && PR[s].listPrice) || BG.LIST_PRICE || priceOf(s);
 const usdOf = s => (PR[s] && PR[s].priceUsd != null) ? PR[s].priceUsd : BG.PRICE_USD;
 const sizesOf = s => (PR[s] && PR[s].sizes && PR[s].sizes.length) ? PR[s].sizes.map(Number) : null;
+const outOf = s => (PR[s] && PR[s].out) ? PR[s].out.map(Number) : [];
+const soldOut = s => { const a = sizesOf(s), o = outOf(s); return !!a && a.every(n => o.includes(n)); };
 function setPrice(box, slug) {
   if (!box) return;
   const p = slug ? priceOf(slug) : BG.PRICE, l = slug ? listOf(slug) : BG.LIST_PRICE, s = $('s', box), b = $('b', box);
   if (b) b.textContent = fmt(p);
   if (s) { s.textContent = fmt(l); s.hidden = !(l > p); }
 }
+/* Rebuilds the size chips from the product's own variations (admin panel); sold-out sizes are shown crossed out and cannot be chosen. */
 function limitSizes(root, slug) {
-  const ok = sizesOf(slug);
-  $$('.szc', root).forEach(c => { const i = $('input', c), on = !ok || ok.includes(+i.value); c.hidden = !on; if (!on) i.checked = false; });
+  const all = sizesOf(slug), box = $('.szs', root); if (!all || !box) return;
+  const first = $('input', box), name = first ? first.name : 'size', out = outOf(slug);
+  box.innerHTML = all.map(n => { const o = out.includes(n); return `<label class="szc${o ? ' out' : ''}"${o ? ' title="Sold out"' : ''}><input type="radio" name="${name}" value="${n}"${o ? ' disabled' : ''}><span>${n}</span></label>`; }).join('');
 }
 const cardHTML = (s, p) => {
   const pr = priceOf(s), l = listOf(s), usd = usdOf(s), sz = sizesOf(s) || [21, 36];
@@ -40,7 +44,7 @@ const cardHTML = (s, p) => {
   <p class="pmeta">Kids' casual sneaker · EU ${Math.min(...sz)}–${Math.max(...sz)}</p>
   <div class="prow"><span class="price">${l > pr ? `<s>${fmt(l)}</s> ` : ''}<b>${fmt(pr)}</b></span></div>
   ${usd ? `<p class="usd-line">US$${usd} <span>international price</span></p>` : ''}
-  <button class="btn sm block qa" type="button" data-qa="${esc(s)}"><svg class="ic" aria-hidden="true"><use href="#i-bag"/></svg> Quick add</button></div></article>`;
+  ${soldOut(s) ? '<button class="btn sm block qa" type="button" disabled>Sold out</button>' : `<button class="btn sm block qa" type="button" data-qa="${esc(s)}"><svg class="ic" aria-hidden="true"><use href="#i-bag"/></svg> Quick add</button>`}</div></article>`;
 };
 (function hydrate() {
   const pd = $('.pdp');
@@ -82,6 +86,7 @@ const cardHTML = (s, p) => {
   const badge = $('.badge', pd); if (badge) { badge.textContent = 'Save ' + Math.round((l - pr) / l * 100) + '%'; badge.hidden = !(l > pr); }
   const un = $('.usd-note', pd); if (un) { const b = $('b', un); if (b) b.textContent = 'US$' + usd; un.hidden = !usd; }
   limitSizes(pd, slug); const of = $('#orderForm'); if (of) limitSizes(of, slug);
+  if (soldOut(slug)) { document.body.classList.add('sold-out'); $$('#addBtn,#buyNow,#barAdd,#barBuy,#submitBtn').forEach(b => { b.disabled = true; }); const se = $('#sizeErr'); if (se) se.textContent = 'This product is sold out right now.'; $$('a[href="#order"]').forEach(a => { a.textContent = 'Sold out'; a.classList.add('off'); }); }
 })();
 
 /* ---------- mobile menu ---------- */
@@ -200,10 +205,36 @@ const valueOf = items => T.sum(items);
    Shared order helpers (store checkout AND landing pages)
    ===================================================================== */
 const el = (form, k) => form.elements.namedItem(k);
-const phoneOk = v => /^(?:\+?88)?01[3-9]\d{8}$/.test(v.replace(/[\s-]/g, ''));
+const phoneOk = v => /^01[3-9]\d{8}$/.test(v);
+/* Bangladesh mobile number: "+88" is fixed in front; the box keeps digits only, starts with 0, and stops at 11 digits. */
+function cleanPhone(v) {
+  let d = String(v || '').replace(/\D/g, '');
+  if (d.startsWith('8801')) d = d.slice(2);     // +8801712... pasted or typed with the country code
+  if (d[0] === '1') d = '0' + d;                // 1712... typed without the leading 0
+  return d.slice(0, 11);
+}
+document.addEventListener('input', e => { const t = e.target; if (t && t.name === 'phone' && t.closest('.phone')) { const c = cleanPhone(t.value); if (c !== t.value) t.value = c; } });
+/* Incomplete orders: once the mobile number is valid, what the visitor typed is saved so the team can follow up if the order is not finished. */
+function watchLead(form, source, getItems) {
+  if (!BG.LEAD_ENDPOINT) return;
+  let token = ''; try { token = sessionStorage.getItem('bg_lead') || ''; } catch (e) {}
+  if (!token) { token = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).toLowerCase(); try { sessionStorage.setItem('bg_lead', token); } catch (e) {} }
+  let timer, last = '';
+  const send = () => {
+    const ph = el(form, 'phone').value; if (!phoneOk(ph) || form.dataset.done) return;
+    const a = T.attribution().last || {}, body = JSON.stringify({ token, source, phone: ph, name: el(form, 'name').value, email: el(form, 'email').value, district: el(form, 'district').value, address: el(form, 'address').value,
+      area: el(form, 'district').value || el(form, 'address').value ? (el(form, 'area').value === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka') : '',
+      items: getItems().map(i => ({ slug: i.slug, size: +i.size || 0, qty: i.qty })), tracking: Object.assign({ page_url: location.href, referrer: document.referrer }, a, T.ids()) });
+    if (body === last) return; last = body;
+    try { fetch(BG.LEAD_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, keepalive: true }).catch(() => {}); } catch (e) {}
+  };
+  const later = () => { clearTimeout(timer); timer = setTimeout(send, 1200); };
+  form.addEventListener('input', later); form.addEventListener('change', later);
+  addEventListener('pagehide', send);
+}
 const rules = {
   name: v => v.trim().length < 2 ? 'Please enter your name' : '',
-  phone: v => !phoneOk(v) ? 'Enter a valid mobile number, e.g. 01712345678' : '',
+  phone: v => !phoneOk(v) ? 'Enter your 11-digit mobile number, e.g. 01712345678' : '',
   email: v => v.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? 'Enter a valid email or leave it empty' : '',
   district: v => !v ? 'Please select your district' : '',
   address: v => v.trim().length < 10 ? 'Please enter your full address' : ''
@@ -315,7 +346,7 @@ if (lp && lform) {
   $('#qp').onclick = () => { qty = Math.min(10, qty + 1); render(); };
   render();
   const fields = bindFields(lform); bindDistrict(lform);
-  watchShipping(lform, fields, lineItems, area);
+  watchShipping(lform, fields, lineItems, area); watchLead(lform, 'landing', lineItems);
   lform.addEventListener('submit', async e => {
     e.preventDefault();
     if (sending) return;
@@ -330,6 +361,7 @@ if (lp && lform) {
     await stageEvent('add_payment_info', lform, lineItems(), area());
     const res = await sendOrder(order);
     if (!res.ok) { sending = false; sendFailed(res); return; }
+    lform.dataset.done = '1'; try { sessionStorage.removeItem('bg_lead'); } catch (e) {}
     await firePurchase(lform, order, lineItems(), area());
     $('.co-grid').hidden = true; showDone(order);
   });
@@ -437,7 +469,7 @@ if (qa) {
   const draw = () => $('#qaQv').textContent = q;
   const open = s => {
     slug = s; q = 1; draw(); $$('input[name=qasize]', qa).forEach(r => r.checked = false); $('#qaErr').textContent = '';
-    $('#qaImg').src = PR[s].img; $('#qaName').textContent = PR[s].title; setPrice($('.qa-head .price', qa), s); limitSizes(qa, s); { const u = $('.qa-head .usd-line', qa); if (u) u.hidden = !usdOf(s); } qa.querySelector('[data-open-size]').sizeTarget = eu => { const r = qa.querySelector(`input[name=qasize][value="${eu}"]`); if (r) { r.checked = true; $('#qaErr').textContent = ''; } };
+    $('#qaImg').src = PR[s].img; $('#qaName').textContent = PR[s].title; setPrice($('.qa-head .price', qa), s); limitSizes(qa, s); { const u = $('.qa-head .usd-line', qa); if (u) u.hidden = !usdOf(s); } qa.querySelector('[data-open-size]').sizeTarget = eu => { const r = qa.querySelector(`input[name=qasize][value="${eu}"]`); if (r && !r.disabled) { r.checked = true; $('#qaErr').textContent = ''; } };
     openSheet(qa); T.push({ event: 'quick_add_open', item_id: PR[s].sku });
   };
   document.addEventListener('click', e => { const b = e.target.closest('[data-qa]'); if (b) { lastFocus = b; open(b.dataset.qa); } });
@@ -458,7 +490,7 @@ if (page === 'pdp' && document.body.dataset.page !== 'gone') {
   $('#qm').onclick = () => { q = Math.max(1, q - 1); draw(); };
   $('#qp').onclick = () => { q = Math.min(10, q + 1); draw(); };
   pd.addEventListener('change', () => { if (size()) { $('#sizeErr').textContent = ''; T.push({ event: 'select_size', item_id: PR[slug].sku, size: 'EU ' + size() }); } });
-  const sg = pd.querySelector('[data-open-size]'); if (sg) sg.sizeTarget = eu => { const r = pd.querySelector(`input[name=size][value="${eu}"]`); if (r) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } };
+  const sg = pd.querySelector('[data-open-size]'); if (sg) sg.sizeTarget = eu => { const r = pd.querySelector(`input[name=size][value="${eu}"]`); if (r && !r.disabled) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } };
   T.ecom('view_item', { value: priceOf(slug), items: [T.item(slug)] }, { page_type: 'product' });
   const need = () => {
     if (size()) return true;
@@ -498,7 +530,7 @@ if (page === 'checkout') {
   if (!lines().length) { $('#coGrid').hidden = true; $('#coEmpty').hidden = false; }
   else T.ecom('begin_checkout', { value: valueOf(itemsOf(lines())), items: itemsOf(lines()) }, { page_type: 'checkout', buy_now: !!bn });
   const fields = bindFields(form); bindDistrict(form);
-  watchShipping(form, fields, lines, area);
+  watchShipping(form, fields, lines, area); watchLead(form, 'store', lines);
   let sending = false;
   form.addEventListener('submit', async e => {
     e.preventDefault();
@@ -511,6 +543,7 @@ if (page === 'checkout') {
     await stageEvent('add_payment_info', form, lines(), area());
     const res = await sendOrder(order);
     if (!res.ok) { sending = false; sendFailed(res); return; }
+    form.dataset.done = '1'; try { sessionStorage.removeItem('bg_lead'); } catch (e) {}
     await firePurchase(form, order, lines(), area());
     if (bn) { try { sessionStorage.removeItem(BN); } catch (e) {} } else { cart = []; persist(); refresh(); }
     $('#coGrid').hidden = true; showDone(order);

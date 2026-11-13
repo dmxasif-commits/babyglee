@@ -65,6 +65,7 @@ if ($isPost) {
             if ($was !== false && ($was !== $st || $note !== '')) {
                 $pdo->prepare('UPDATE orders SET status = ? WHERE id = ?')->execute([$st, $id]);
                 $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note) VALUES (?,?,?,?)')->execute([$id, now(), $st, $note]);
+                order_stock_sync($pdo, $id, $st);
                 flash('Order #' . $id . ' is now ' . BG_STATUSES[$st] . '.');
             }
         }
@@ -85,11 +86,45 @@ if ($isPost) {
                 $cur->execute([$id]); $was = $cur->fetchColumn();
                 if ($was === false || $was === $s) continue;
                 $pdo->prepare('UPDATE orders SET status = ? WHERE id = ?')->execute([$s, $id]);
-                $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note) VALUES (?,?,?,?)')->execute([$id, now(), $s, 'Bulk update']); $n++;
+                $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note) VALUES (?,?,?,?)')->execute([$id, now(), $s, 'Bulk update']); order_stock_sync($pdo, $id, $s); $n++;
             }
             flash($n . ' order' . ($n === 1 ? '' : 's') . ' marked as ' . BG_STATUSES[$s] . '.');
         }
         go('p=orders');
+    }
+    if (in_array($act, ['lead_cancel', 'lead_reopen', 'lead_delete'], true)) {
+        $lid = (int) $_POST['id'];
+        if ($act === 'lead_delete') { $pdo->prepare('DELETE FROM leads WHERE id = ?')->execute([$lid]); flash('Incomplete order deleted.'); go('p=leads'); }
+        $pdo->prepare('UPDATE leads SET status = ?, note = ? WHERE id = ?')->execute([$act === 'lead_cancel' ? 'cancelled' : 'new', mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 300), $lid]);
+        flash($act === 'lead_cancel' ? 'Marked as cancelled. It stays in Incomplete > Cancelled.' : 'Moved back to follow up.'); go('p=leads');
+    }
+    if ($act === 'lead_convert') {
+        $lid = (int) $_POST['id']; $ls = $pdo->prepare('SELECT * FROM leads WHERE id = ?'); $ls->execute([$lid]); $lead = $ls->fetch();
+        if (!$lead) { flash('This incomplete order no longer exists.'); go('p=leads'); }
+        $name = mb_substr(trim((string) $_POST['name']), 0, 120); $phone = bd_phone((string) $_POST['phone']); $district = mb_substr(trim((string) $_POST['district']), 0, 60); $address = mb_substr(trim((string) $_POST['address']), 0, 600);
+        $areaKey = ($_POST['area'] ?? '') === 'dhaka' ? 'dhaka' : 'outside'; $cat = products(true); $items = []; $sub = 0; $cost = 0; $err = '';
+        foreach ((array) ($_POST['it_slug'] ?? []) as $n => $slug) {
+            $size = (int) ($_POST['it_size'][$n] ?? 0); $qty = max(1, min(10, (int) ($_POST['it_qty'][$n] ?? 1))); $p = $cat[(string) $slug] ?? null;
+            if (!$p || !isset($p['variants'][$size])) { $err = 'Choose a size that exists for each product.'; break; }
+            if ($p['track'] && $p['variants'][$size] < $qty) { $err = $p['name'] . ' EU ' . $size . ': only ' . max(0, $p['variants'][$size]) . ' in stock.'; break; }
+            $items[] = ['slug' => (string) $slug, 'sku' => $p['sku'], 'product' => $p['name'], 'size' => $size, 'qty' => $qty, 'price' => (int) $p['price'], 'cost' => (int) $p['cost']];
+            $sub += $qty * (int) $p['price']; $cost += $qty * (int) $p['cost'];
+        }
+        if (!$err && (mb_strlen($name) < 2 || $phone === '' || $district === '' || mb_strlen($address) < 5 || !$items)) $err = 'Name, a valid 11-digit mobile number, district, address and at least one product are required.';
+        if ($err) { flash('Not confirmed: ' . $err); go('p=lead&id=' . $lid); }
+        $oid = 'BG' . strtoupper(substr(base_convert((string) (int) (microtime(true) * 1000), 10, 36), -7));
+        $delivery = (int) setting($areaKey === 'dhaka' ? 'delivery_dhaka' : 'delivery_outside');
+        $tr = json_decode((string) $lead['tracking'], true) ?: []; $tr['event_id'] = 'purchase_' . $oid;
+        $pdo->beginTransaction();
+        $take = $pdo->prepare('UPDATE variants SET stock = stock - ? WHERE product_id = ? AND size = ? AND stock >= ?');
+        foreach ($items as $i) { $p = $cat[$i['slug']]; if (!$p['track']) continue; $take->execute([$i['qty'], $p['id'], $i['size'], $i['qty']]); if ($take->rowCount() !== 1) { $pdo->rollBack(); flash('Not confirmed: ' . $p['name'] . ' EU ' . $i['size'] . ' just sold out.'); go('p=lead&id=' . $lid); } }
+        $pdo->prepare('INSERT INTO orders (id, created_at, status, source, name, phone, email, district, address, area, subtotal, delivery, total, items, tracking, ip, user_agent, note, cost, stock_held) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)')
+            ->execute([$oid, now(), 'confirmed', $lead['source'], $name, '+' . $phone, $lead['email'], $district, $address, $areaKey === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka', $sub, $delivery, $sub + $delivery,
+                json_encode($items, JSON_UNESCAPED_UNICODE), json_encode($tr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $lead['ip'], '', 'Recovered from an incomplete order', $cost]);
+        $pdo->prepare('INSERT INTO order_log (order_id, created_at, status, note) VALUES (?,?,?,?)')->execute([$oid, now(), 'confirmed', 'Created from an incomplete order (confirmed by phone)']);
+        $pdo->prepare('DELETE FROM leads WHERE id = ? OR phone = ?')->execute([$lid, '+' . $phone]);
+        $pdo->commit();
+        flash('Order #' . $oid . ' created and confirmed.'); go('p=order&id=' . $oid);
     }
     if ($act === 'note') {
         $pdo->prepare('UPDATE orders SET note = ? WHERE id = ?')->execute([mb_substr(trim((string) $_POST['note']), 0, 2000), (string) $_POST['id']]);
@@ -101,7 +136,9 @@ if ($isPost) {
         $sku = mb_substr(preg_replace('/[^A-Za-z0-9._-]/', '', (string) $_POST['sku']) ?? '', 0, 60);
         $price = max(0, (int) $_POST['price']); $list = max($price, (int) $_POST['list_price']); $usd = max(0, (int) $_POST['price_usd']); $cost = max(0, (int) ($_POST['cost'] ?? 0));
         $hex = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $_POST['color_hex']) ? (string) $_POST['color_hex'] : '#24babc';
-        $sizes = implode(',', array_values(array_intersect(BG_SIZES, array_map('intval', (array) ($_POST['sizes'] ?? [])))));
+        $variants = []; $vs = (array) ($_POST['var_size'] ?? []); $vq = (array) ($_POST['var_stock'] ?? []);
+        foreach ($vs as $i => $sz) { $sz = (int) $sz; if ($sz >= 10 && $sz <= 60) $variants[$sz] = max(0, (int) ($vq[$i] ?? 0)); }
+        ksort($variants); $sizes = implode(',', array_keys($variants)); $track = empty($_POST['track_stock']) ? 0 : 1;
         $active = empty($_POST['active']) ? 0 : 1; $sort = (int) ($_POST['sort'] ?? 0);
         $img = null; $err = '';
         if (!empty($_FILES['image']['name'])) {
@@ -130,11 +167,16 @@ if ($isPost) {
                 ->execute([$slug, $sku, $name, $color, $hex, $img, $price, $list, $usd, $sizes, '', $active, $sort, now()]);
             flash('Product added. It is now in the shop.');
         }
-        $pdo->prepare('UPDATE products SET cost = ? WHERE id = ?')->execute([$cost, $id ?: (int) $pdo->lastInsertId()]);
+        $pid = $id ?: (int) $pdo->lastInsertId();
+        $pdo->prepare('UPDATE products SET cost = ?, track_stock = ? WHERE id = ?')->execute([$cost, $track, $pid]);
+        $pdo->prepare('DELETE FROM variants WHERE product_id = ?')->execute([$pid]);
+        $iv = $pdo->prepare('INSERT INTO variants (product_id, size, stock) VALUES (?, ?, ?)');
+        foreach ($variants as $sz => $q) $iv->execute([$pid, $sz, $q]);
         go('p=products');
     }
     if ($act === 'product_delete') {
         $pdo->prepare('DELETE FROM products WHERE id = ?')->execute([(int) $_POST['id']]);
+        $pdo->prepare('DELETE FROM variants WHERE product_id = ?')->execute([(int) $_POST['id']]);
         flash('Product removed. Past orders keep their details.'); go('p=products');
     }
     if ($act === 'settings') {
@@ -183,7 +225,7 @@ if ($page === 'export') {
 if ($page === 'backup') {
     header('Content-Type: application/json; charset=utf-8'); header('Content-Disposition: attachment; filename="babyglee-backup-' . date('Y-m-d-His') . '.json"');
     $settings = []; foreach ($pdo->query('SELECT k, v FROM settings') as $r) if (!in_array($r['k'], ['admin_hash', 'meta_capi_token'], true)) $settings[$r['k']] = $r['v'];
-    echo json_encode(['created_at' => now(), 'note' => 'Babyglee backup. Passwords and API tokens are not included.', 'settings' => $settings,
+    echo json_encode(['created_at' => now(), 'note' => 'Babyglee backup. Passwords and API tokens are not included.', 'settings' => $settings, 'variants' => $pdo->query('SELECT * FROM variants')->fetchAll(), 'leads' => $pdo->query('SELECT * FROM leads')->fetchAll(),
         'products' => $pdo->query('SELECT * FROM products')->fetchAll(), 'orders' => $pdo->query('SELECT * FROM orders')->fetchAll(), 'order_log' => $pdo->query('SELECT * FROM order_log')->fetchAll()], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     exit;
 }
@@ -193,9 +235,9 @@ function page_head(string $title, bool $nav = true): void {
     global $page, $csrf;
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>' . h($title) . ' — Babyglee admin</title><link rel="stylesheet" href="admin.css"></head><body>';
     if ($nav) {
-        $links = ['dashboard' => 'Dashboard', 'orders' => 'Orders', 'utm' => 'Ads', 'products' => 'Products', 'settings' => 'Settings'];
+        $links = ['dashboard' => 'Dashboard', 'orders' => 'Orders', 'leads' => 'Incomplete', 'utm' => 'Ads', 'products' => 'Products', 'settings' => 'Settings'];
         echo '<header class="top"><a class="logo" href="index.php">Babyglee <span>admin</span></a><nav>';
-        foreach ($links as $k => $l) echo '<a href="index.php?p=' . $k . '"' . (($page === $k || ($k === 'orders' && $page === 'order') || ($k === 'products' && $page === 'product')) ? ' class="on"' : '') . '>' . $l . '</a>';
+        foreach ($links as $k => $l) echo '<a href="index.php?p=' . $k . '"' . (($page === $k || ($k === 'orders' && $page === 'order') || ($k === 'products' && $page === 'product') || ($k === 'leads' && $page === 'lead')) ? ' class="on"' : '') . '>' . $l . '</a>';
         echo '</nav><form method="post" action="index.php?p=logout">' . $csrf . '<button class="link">Log out</button></form></header>';
         if ($f = flash()) echo '<p class="flash" role="status">' . h($f) . '</p>';
     }
@@ -281,6 +323,51 @@ if ($page === 'utm') {
     page_foot(); exit;
 }
 
+
+/* ---------------- incomplete orders: checkout started (valid mobile number typed) but not finished ---------------- */
+if ($page === 'leads') {
+    $tab = ($_GET['status'] ?? '') === 'cancelled' ? 'cancelled' : 'new';
+    $cnt = ['new' => 0, 'cancelled' => 0]; foreach ($pdo->query('SELECT status, COUNT(*) c FROM leads GROUP BY status') as $r) $cnt[$r['status']] = (int) $r['c'];
+    $st = $pdo->prepare('SELECT * FROM leads WHERE status = ? ORDER BY updated_at DESC LIMIT 200'); $st->execute([$tab]); $rows = $st->fetchAll();
+    $cat = products(false);
+    page_head('Incomplete orders');
+    echo '<h1>Incomplete orders</h1><p class="mut">People who typed their mobile number at checkout but did not finish the order. Call them, then confirm (it becomes a normal order) or cancel (it stays here).</p>
+      <div class="tabs"><a href="index.php?p=leads"' . ($tab === 'new' ? ' class="on"' : '') . '>To follow up <b>' . $cnt['new'] . '</b></a><a href="index.php?p=leads&status=cancelled"' . ($tab === 'cancelled' ? ' class="on"' : '') . '>Cancelled <b>' . $cnt['cancelled'] . '</b></a></div>';
+    if (!$rows) echo '<p class="card mut">Nothing here.</p>';
+    foreach ($rows as $l) {
+        $items = json_decode((string) $l['items'], true) ?: [];
+        $txt = implode(', ', array_map(fn($i) => preg_replace('/^Babyglee\s+/u', '', (string) ($cat[$i['slug']]['name'] ?? $i['slug'])) . ((int) $i['size'] ? ' (EU ' . (int) $i['size'] . ')' : ' (size not chosen)') . ' × ' . (int) $i['qty'], $items));
+        echo '<article class="card order"><div class="o-top"><a class="oid" href="index.php?p=lead&id=' . (int) $l['id'] . '">' . h($l['phone']) . '</a><span class="st st-' . ($tab === 'new' ? 'pending' : 'cancelled') . '">' . ($tab === 'new' ? 'Incomplete' : 'Cancelled') . '</span><span class="src">' . h($l['source']) . '</span><time>' . h(date('d M, h:i A', strtotime($l['updated_at']))) . '</time></div>
+          <div class="o-mid"><div><b>' . h($l['name'] !== '' ? $l['name'] : 'Name not typed') . '</b><br><span class="mut">' . h($l['district'] !== '' ? $l['district'] : 'No address yet') . '</span></div></div><p class="o-items">' . h($txt ?: 'No product') . '</p>
+          <div class="acts"><a class="btn sm" href="tel:' . h($l['phone']) . '">Call</a><a class="btn sm wa" href="https://wa.me/' . h(preg_replace('/\D/', '', $l['phone'])) . '" target="_blank" rel="noopener">WhatsApp</a><a class="btn sm ghost" href="index.php?p=lead&id=' . (int) $l['id'] . '">Open</a></div></article>';
+    }
+    page_foot(); exit;
+}
+if ($page === 'lead') {
+    $st = $pdo->prepare('SELECT * FROM leads WHERE id = ?'); $st->execute([(int) ($_GET['id'] ?? 0)]); $l = $st->fetch();
+    page_head('Incomplete order');
+    if (!$l) { echo '<p class="card">Not found (the customer may have completed the order). <a href="index.php?p=leads">Back</a></p>'; page_foot(); exit; }
+    $items = json_decode((string) $l['items'], true) ?: []; $t = json_decode((string) $l['tracking'], true) ?: []; $cat = products(true);
+    if (!$items) $items = [['slug' => (string) array_key_first($cat), 'size' => 0, 'qty' => 1]];
+    $local = '0' . substr(preg_replace('/\D/', '', $l['phone']), 3);
+    echo '<p><a href="index.php?p=leads">← Incomplete orders</a></p><div class="row"><h1>' . h($l['phone']) . '</h1><span class="st st-' . ($l['status'] === 'new' ? 'pending">Incomplete' : 'cancelled">Cancelled') . '</span></div>
+      <p class="mut">Started ' . h(date('d M Y, h:i A', strtotime($l['created_at']))) . ' on the ' . h($l['source']) . ' page' . (!empty($t['utm_campaign']) ? ' · campaign: ' . h($t['utm_campaign']) : '') . (!empty($t['utm_content']) ? ' · ad: ' . h($t['utm_content']) : '') . '</p>
+      <div class="acts top-acts"><a class="btn sm" href="tel:' . h($l['phone']) . '">Call</a><a class="btn sm wa" href="https://wa.me/' . h(preg_replace('/\D/', '', $l['phone'])) . '" target="_blank" rel="noopener">WhatsApp</a></div>
+      <form method="post" class="card form">' . $csrf . '<input type="hidden" name="act" value="lead_convert"><input type="hidden" name="id" value="' . (int) $l['id'] . '"><h2>Confirm as an order</h2><p class="mut">Fill in what the customer tells you on the phone. Prices and delivery charge are calculated automatically.</p>
+      <div class="f2"><label>Name<input name="name" required maxlength="120" value="' . h($l['name']) . '"></label><label>Mobile number (11 digits)<input name="phone" required inputmode="numeric" maxlength="11" value="' . h($local) . '"></label></div>
+      <div class="f2"><label>District<input name="district" required maxlength="60" value="' . h($l['district']) . '"></label><label>Delivery area<select name="area"><option value="dhaka"' . ($l['area'] === 'Inside Dhaka' ? ' selected' : '') . '>Inside Dhaka</option><option value="outside"' . ($l['area'] !== 'Inside Dhaka' ? ' selected' : '') . '>Outside Dhaka</option></select></label></div>
+      <label>Full address<textarea name="address" rows="2" required maxlength="600">' . h($l['address']) . '</textarea></label><fieldset><legend>Products</legend>';
+    foreach ($items as $i) {
+        echo '<div class="vrow"><label>Product<select name="it_slug[]">';
+        foreach ($cat as $slug => $p) echo '<option value="' . h($slug) . '"' . ($slug === $i['slug'] ? ' selected' : '') . '>' . h(preg_replace('/^Babyglee\s+/u', '', $p['name'])) . '</option>';
+        echo '</select></label><label>Size (EU)<input type="number" name="it_size[]" min="10" max="60" inputmode="numeric" required value="' . ((int) $i['size'] ?: '') . '"></label><label>Qty<input type="number" name="it_qty[]" min="1" max="10" inputmode="numeric" value="' . (int) $i['qty'] . '"></label></div>';
+    }
+    echo '</fieldset><button class="btn">Confirm and create order</button></form>
+      <div class="grid2"><form method="post" class="card">' . $csrf . '<input type="hidden" name="id" value="' . (int) $l['id'] . '"><h2>' . ($l['status'] === 'new' ? 'Not interested?' : 'Cancelled') . '</h2><label>Note<input name="note" maxlength="300" value="' . h($l['note']) . '" placeholder="e.g. did not pick up, wrong number"></label>
+        <div class="acts">' . ($l['status'] === 'new' ? '<button class="btn ghost" name="act" value="lead_cancel">Cancel (keep in this list)</button>' : '<button class="btn ghost" name="act" value="lead_reopen">Move back to follow up</button>') . '<button class="btn red" name="act" value="lead_delete" onclick="return confirm(\'Delete this incomplete order for good?\')">Delete</button></div></form></div>';
+    page_foot(); exit;
+}
+
 if ($page === 'orders') {
     $status = isset(BG_STATUSES[$_GET['status'] ?? '']) ? (string) $_GET['status'] : ''; $q = trim((string) ($_GET['q'] ?? ''));
     $where = []; $args = [];
@@ -352,7 +439,7 @@ if ($page === 'products') {
     $rows = products(false);
     page_head('Products');
     echo '<div class="row"><h1>Products</h1><a class="btn" href="index.php?p=product">Add product</a></div><div class="pgrid">';
-    foreach ($rows as $p) echo '<a class="card prod' . ($p['active'] ? '' : ' off') . '" href="index.php?p=product&id=' . (int) $p['id'] . '"><img src="../' . h($p['img']) . '" alt="" loading="lazy"><b>' . h($p['name']) . '</b><span class="mut">' . h($p['sku']) . '</span><span><s>' . taka($p['list_price']) . '</s> <b class="pr">' . taka($p['price']) . '</b></span>' . ($p['active'] ? '' : '<span class="st st-cancelled">Hidden</span>') . '</a>';
+    foreach ($rows as $p) echo '<a class="card prod' . ($p['active'] ? '' : ' off') . '" href="index.php?p=product&id=' . (int) $p['id'] . '"><img src="../' . h($p['img']) . '" alt="" loading="lazy"><b>' . h($p['name']) . '</b><span class="mut">' . h($p['sku']) . '</span><span><s>' . taka($p['list_price']) . '</s> <b class="pr">' . taka($p['price']) . '</b></span>' . ($p['active'] ? '' : '<span class="st st-cancelled">Hidden</span>') . ($p['track'] ? '<span class="stk' . (array_sum($p['variants']) <= 0 ? ' zero' : (min($p['variants'] ?: [0]) <= 0 ? ' low' : '')) . '">' . array_sum($p['variants']) . ' in stock · ' . count(array_filter($p['variants'], fn($q) => $q <= 0)) . ' of ' . count($p['variants']) . ' sizes sold out</span>' : '<span class="stk off">' . count($p['variants']) . ' sizes · stock not counted</span>') . '</a>';
     echo '</div>'; page_foot(); exit;
 }
 
@@ -361,6 +448,15 @@ if ($page === 'product') {
     if ($id) { $st = $pdo->prepare('SELECT * FROM products WHERE id = ?'); $st->execute([$id]); $p = $st->fetch() ?: null; }
     $v = $p ?: ['name' => 'Babyglee Bounce — ', 'color' => '', 'sku' => 'BSTD-01-', 'price' => 1290, 'list_price' => 1800, 'price_usd' => 15, 'cost' => 0, 'color_hex' => '#24babc', 'sizes' => implode(',', BG_SIZES), 'active' => 1, 'sort' => 10, 'img' => ''];
     $have = array_map('intval', explode(',', (string) $v['sizes']));
+    $vars = [];
+    if ($p) { $vq = $pdo->prepare('SELECT size, stock FROM variants WHERE product_id = ? ORDER BY size'); $vq->execute([$id]); foreach ($vq as $r) $vars[(int) $r['size']] = (int) $r['stock']; }
+    else foreach (BG_SIZES as $sz) $vars[$sz] = 0;
+    $vrow = fn($sz, $q) => '<div class="vrow"><label>Size (EU)<input type="number" name="var_size[]" min="10" max="60" inputmode="numeric" value="' . h($sz) . '" required></label><label>Stock (pairs)<input type="number" name="var_stock[]" min="0" inputmode="numeric" value="' . h($q) . '"></label><button type="button" class="btn sm ghost" onclick="this.closest(\'.vrow\').remove()">Remove</button></div>';
+    $track = !empty($v['track_stock']);
+    $varHtml = '<fieldset><legend>Sizes (variations) and stock</legend><p class="mut">One row per size you sell. Add or remove sizes as you like.</p><div id="vrows">' . implode('', array_map($vrow, array_keys($vars), $vars)) . '</div>
+      <template id="vtpl">' . $vrow('', 0) . '</template><button type="button" class="btn sm ghost" onclick="document.getElementById(\'vrows\').appendChild(document.getElementById(\'vtpl\').content.cloneNode(true))">+ Add a size</button>
+      <label class="chk big trk"><input type="checkbox" name="track_stock" value="1"' . ($track ? ' checked' : '') . '><span>Count stock for this product</span></label>
+      <p class="mut">When ticked: each order takes pairs out of stock, a size with 0 pairs shows as sold out on the website, and cancelled or returned orders put the pairs back. When not ticked, every size listed here can always be ordered and the stock numbers are ignored.' . ($track ? ' <b>In stock now: ' . array_sum($vars) . ' pairs.</b>' : '') . '</p></fieldset>';
     page_head($p ? 'Edit product' : 'Add product');
     echo '<p><a href="index.php?p=products">← Products</a></p><h1>' . ($p ? 'Edit product' : 'Add product') . '</h1><form method="post" enctype="multipart/form-data" class="card form">' . $csrf . '<input type="hidden" name="act" value="product"><input type="hidden" name="id" value="' . $id . '">
       <label>Product name<input name="name" required maxlength="150" value="' . h($v['name']) . '"></label>
@@ -368,9 +464,7 @@ if ($page === 'product') {
       <label>SKU (item ID sent to GA4 / Meta)<input name="sku" required maxlength="60" value="' . h($v['sku']) . '"></label>
       <div class="f3"><label>Price (৳)<input type="number" name="price" min="1" required inputmode="numeric" value="' . (int) $v['price'] . '"></label><label>Old price (৳)<input type="number" name="list_price" min="0" inputmode="numeric" value="' . (int) $v['list_price'] . '"></label><label>USD price<input type="number" name="price_usd" min="0" inputmode="numeric" value="' . (int) $v['price_usd'] . '"></label></div>
       <label>Purchase price / your cost per pair (৳) — private, never shown on the website<input type="number" name="cost" min="0" inputmode="numeric" value="' . (int) ($v['cost'] ?? 0) . '"></label>' . ((int) ($v['cost'] ?? 0) > 0 ? '<p class="mut">Margin: <b>' . taka((int) $v['price'] - (int) $v['cost']) . '</b> per pair (' . round(((int) $v['price'] - (int) $v['cost']) / max(1, (int) $v['price']) * 100) . '%), before delivery and ad cost.</p>' : '') . '
-      <fieldset><legend>Sizes in stock (EU)</legend><div class="sizes">';
-    foreach (BG_SIZES as $s) echo '<label class="chk"><input type="checkbox" name="sizes[]" value="' . $s . '"' . (in_array($s, $have, true) ? ' checked' : '') . '><span>' . $s . '</span></label>';
-    echo '</div><p class="mut">Untick a size when it is out of stock: customers can no longer choose it.</p></fieldset>
+      ' . $varHtml . '
       <label>Product image (JPG, PNG or WebP, up to 3 MB; a cut-out photo on a transparent background looks best)' . ($v['img'] ? '<img class="cur" src="../' . h($v['img']) . '" alt="">' : '') . '<input type="file" name="image" accept="image/jpeg,image/png,image/webp"' . ($p ? '' : ' required') . '></label>
       <div class="f2"><label>Order in shop (small number first)<input type="number" name="sort" value="' . (int) $v['sort'] . '"></label><label class="chk big"><input type="checkbox" name="active" value="1"' . ($v['active'] ? ' checked' : '') . '><span>Show in shop</span></label></div>
       <button class="btn">' . ($p ? 'Save product' : 'Add product') . '</button></form>';
@@ -438,6 +532,11 @@ page_head('Dashboard');
 echo '<div class="row"><h1>Dashboard</h1><div class="tabs sm">';
 foreach ([7, 30, 90] as $d) echo '<a href="index.php?days=' . $d . '"' . ($days === $d ? ' class="on"' : '') . '>' . $d . ' days</a>';
 echo '</div></div>';
+$lowStock = [];
+foreach (products(true) as $lp) { if (!$lp['track']) continue; $z = array_keys(array_filter($lp['variants'], fn($q) => $q <= 3)); if ($z) $lowStock[] = preg_replace('/^Babyglee\s+/u', '', $lp['name']) . ' (EU ' . implode(', ', $z) . ')'; }
+$openLeads = (int) $pdo->query("SELECT COUNT(*) FROM leads WHERE status = 'new'")->fetchColumn();
+if ($openLeads) echo '<a class="alert soft" href="index.php?p=leads"><b>' . $openLeads . '</b> incomplete order' . ($openLeads > 1 ? 's' : '') . ' to follow up →</a>';
+if ($lowStock) echo '<a class="alert warn" href="index.php?p=products"><b>Low stock (3 pairs or fewer):</b> ' . h(implode(' · ', array_slice($lowStock, 0, 6))) . ' →</a>';
 if ($k['pending']) echo '<a class="alert" href="index.php?p=orders&status=pending"><b>' . $k['pending'] . '</b> order' . ($k['pending'] > 1 ? 's' : '') . ' waiting to be confirmed →</a>';
 if (setting('gtm_id') === '') echo '<a class="alert soft" href="index.php?p=settings">Tracking is off: add your GTM container ID in Settings →</a>';
 echo '<div class="kpis"><div class="card kpi"><span>Today</span><b>' . $k['today'] . '</b><small>' . taka($k['today_value']) . '</small></div>
