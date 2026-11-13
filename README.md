@@ -11,8 +11,12 @@ Static, mobile-first website for Babyglee kids' sneakers (teal `#24babc` theme).
 
 ## Edit
 - Pages are generated: edit `tools/build.py`, then run `python3 tools/build.py` (it also writes `assets/products.js`).
+- Mobile shopping UX: floating WhatsApp and cart buttons, size guide and Quick add bottom sheets, sticky buy bar on product pages, Buy now checks out one item without touching the cart.
 - Settings (price, delivery charges, WhatsApp support number, order endpoint, Meta Pixel ID): `assets/config.js`.
 - Product photos and logo: `img/`.
+
+## Tracking
+All pixels live in Google Tag Manager. The site pushes GA4 e-commerce events and hashed customer data to `dataLayer`. Setup guide: [`docs/gtm-tracking.md`](docs/gtm-tracking.md). Add `?bgdebug=1` to any URL to see the events on screen.
 
 ## Checkout / backend status
 The checkout form places the order on the page (order ID + confirmation). It posts each order as JSON to

@@ -4,30 +4,40 @@ window.BG_PRODUCTS = {
   "title": "Babyglee Bounce — Sky Blue & Yellow",
   "name": "Sky Blue & Yellow",
   "img": "img/sky-blue-yellow.webp",
-  "url": "product-sky-blue.html"
+  "url": "product-sky-blue.html",
+  "sku": "BSTD-01-SKY-BLUE",
+  "color": "Sky Blue & Yellow"
  },
  "bounce-blue-beige": {
   "title": "Babyglee Bounce — Blue & Beige",
   "name": "Blue & Beige",
   "img": "img/blue-beige.webp",
-  "url": "product-blue-beige.html"
+  "url": "product-blue-beige.html",
+  "sku": "BSTD-01-BLUE-BEIGE",
+  "color": "Blue & Beige"
  },
  "bounce-grey": {
   "title": "Babyglee Bounce — Grey",
   "name": "Grey",
   "img": "img/grey.webp",
-  "url": "product-grey.html"
+  "url": "product-grey.html",
+  "sku": "BSTD-01-GREY",
+  "color": "Grey"
  },
  "bounce-navy-brown": {
   "title": "Babyglee Bounce — Navy & Brown",
   "name": "Navy & Brown",
   "img": "img/navy-brown.webp",
-  "url": "product-navy-brown.html"
+  "url": "product-navy-brown.html",
+  "sku": "BSTD-01-NAVY-BROWN",
+  "color": "Navy & Brown"
  },
  "bounce-black": {
   "title": "Babyglee Bounce — Black",
   "name": "Black",
   "img": "img/black.webp",
-  "url": "product-black.html"
+  "url": "product-black.html",
+  "sku": "BSTD-01-BLACK",
+  "color": "Black"
  }
 };
